@@ -1,0 +1,14 @@
+# 运行时目录（工具、缓存、临时文件）
+ai/
+
+# macOS
+.DS_Store
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.claude/
+*.tgz

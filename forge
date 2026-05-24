@@ -1,0 +1,749 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────
+# forge - AI 工具版本管理器
+#
+# 版本只记录在 versions.lock，每次都从 GitHub 获取最新
+#
+# 用法:
+#   forge                   检查并提示更新（类似 brew cu）
+#   forge -a                检查并更新全部（类似 brew cu -a）
+#   forge install [tool]    安装全部或指定工具
+#   forge uninstall <tool>  卸载指定工具
+#   forge list              显示所有工具状态
+#   forge update            仅检查可用更新
+#   forge upgrade [tool]    更新全部或指定工具
+#   forge new <name>        生成新工具的 manifest 模板
+# ─────────────────────────────────────────────────────────
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REGISTRY_DIR="$ROOT_DIR/registry"
+LOCK_FILE="$ROOT_DIR/ai/versions.lock"
+
+source "$ROOT_DIR/scripts/_common.sh"
+
+# ── 颜色 ─────────────────────────────────────────────────
+R='\033[0;31m' G='\033[0;32m' Y='\033[1;33m' B='\033[0;34m'
+D='\033[2m' NC='\033[0m' BOLD='\033[1m'
+
+# ── 注册表 ───────────────────────────────────────────────
+
+load_registry() {
+    REGISTRY=()
+    for f in "$REGISTRY_DIR"/*.sh; do
+        [ -f "$f" ] || continue
+        REGISTRY+=("$f")
+    done
+}
+
+meta_get() {
+    grep "^# @${2}:" "$1" 2>/dev/null | head -1 | sed "s/^# @${2}: *//" || true
+}
+
+# ── lock 文件 ────────────────────────────────────────────
+
+get_installed() {
+    [ -f "$LOCK_FILE" ] && grep "^${1}|" "$LOCK_FILE" 2>/dev/null | tail -1 | cut -d'|' -f2 || true
+}
+
+set_installed() {
+    mkdir -p "$(dirname "$LOCK_FILE")"
+    if [ -f "$LOCK_FILE" ] && grep -q "^${1}|" "$LOCK_FILE" 2>/dev/null; then
+        sed -i.bak "s#^${1}|.*#${1}|${2}|$(date +%Y-%m-%d)#" "$LOCK_FILE"
+        rm -f "$LOCK_FILE.bak"
+    else
+        echo "${1}|${2}|$(date +%Y-%m-%d)" >> "$LOCK_FILE"
+    fi
+}
+
+# ── 找到 manifest ────────────────────────────────────────
+
+find_manifest() {
+    local name="$1"
+    for m in "${REGISTRY[@]}"; do
+        [ "$(meta_get "$m" "name")" = "$name" ] && { echo "$m"; return; }
+    done
+}
+
+# ── 获取最新版本（从 manifest 的 get_latest）─────────────
+
+get_latest_version() {
+    local manifest="$1"
+    (
+        source "$manifest"
+        type get_latest &>/dev/null && get_latest
+    )
+}
+
+# ── 执行安装/升级（返回安装的版本号）────────────────────
+
+run_upgrade() {
+    local manifest="$1"
+    local result_file="$TMP_DIR/.forge_result_$$"
+    rm -f "$result_file"
+
+    (
+        source "$manifest"
+        if type upgrade &>/dev/null; then
+            upgrade
+            # upgrade 函数应写入 $TMP_DIR/.installed_version
+        fi
+    )
+
+    # 读取安装的版本
+    if [ -f "$result_file" ]; then
+        cat "$result_file"
+        rm -f "$result_file"
+    fi
+}
+
+# ── 打印表头 ─────────────────────────────────────────────
+
+print_header() {
+    printf "\n${BOLD}%-16s %-14s %-14s %s${NC}\n" "$1" "$2" "$3" "$4"
+    printf "${D}%-16s %-14s %-14s %s${NC}\n" \
+        "$(printf '%.0s─' {1..16})" \
+        "$(printf '%.0s─' {1..14})" \
+        "$(printf '%.0s─' {1..14})" \
+        "$(printf '%.0s─' {1..8})"
+}
+
+# ── 命令: list ───────────────────────────────────────────
+
+cmd_list() {
+    load_registry
+    print_header "工具" "已安装" "最新版本" "状态"
+
+    for manifest in "${REGISTRY[@]}"; do
+        local name installed latest status
+        name=$(meta_get "$manifest" "name")
+        installed=$(get_installed "$name")
+
+        # 未安装只显示名称
+        if [ -z "$installed" ]; then
+            printf "%-16s ${D}%-14s${NC} %-14s %b\n" "$name" "-" "-" "${D}未安装${NC}"
+            continue
+        fi
+
+        # 已安装：获取最新版本
+        latest=$(get_latest_version "$manifest")
+
+        if [ -z "$latest" ]; then
+            status="${D}无法获取${NC}"
+        elif [ "$installed" = "$latest" ]; then
+            status="${G}最新${NC}"
+        else
+            status="${Y}可更新${NC}"
+        fi
+
+        printf "%-16s %-14s %-14s %b\n" "$name" "$installed" "${latest:-?}" "$status"
+    done
+    echo ""
+}
+
+# ── 命令: update / 默认（brew cu 风格）───────────────────
+
+cmd_check() {
+    local auto_upgrade="${1:-false}"
+    load_registry
+
+    echo -e "\n${B}检查更新中...${NC}\n"
+
+    local outdated=()
+    print_header "工具" "已安装" "最新版本" "状态"
+
+    for manifest in "${REGISTRY[@]}"; do
+        local name installed latest
+        name=$(meta_get "$manifest" "name")
+        installed=$(get_installed "$name")
+        [ -z "$installed" ] && continue
+
+        latest=$(get_latest_version "$manifest")
+        [ -z "$latest" ] && continue
+
+        if [ "$installed" != "$latest" ]; then
+            printf "%-16s ${Y}%-14s${NC} ${G}%-14s${NC} %b\n" \
+                "$name" "$installed" "$latest" "${R}可更新${NC}"
+            outdated+=("${name}|${installed}|${latest}|${manifest}")
+        fi
+    done
+
+    if [ ${#outdated[@]} -eq 0 ]; then
+        echo -e "\n${G}所有工具均为最新版本。${NC}\n"
+        return 0
+    fi
+
+    echo -e "\n${Y}${#outdated[@]} 个工具可更新。${NC}"
+
+    if [ "$auto_upgrade" = "true" ]; then
+        do_upgrade_list "${outdated[@]}"
+    else
+        echo ""
+        read -r -p "更新全部？[y/N] " choice < /dev/tty
+        if [[ "$choice" =~ ^[Yy]$ ]]; then
+            do_upgrade_list "${outdated[@]}"
+        else
+            echo "已取消。"
+        fi
+    fi
+}
+
+do_upgrade_list() {
+    local entries=("$@")
+    echo ""
+    local ok=0 fail=0
+
+    for entry in "${entries[@]}"; do
+        IFS='|' read -r name installed latest manifest <<< "$entry"
+        echo -e "${B}[升级]${NC} ${BOLD}${name}${NC}  ${installed} → ${G}${latest}${NC}"
+
+        if (
+            source "$manifest"
+            type upgrade &>/dev/null && upgrade
+        ); then
+            set_installed "$name" "$latest"
+            echo -e "  ${G}✓${NC} ${name} ${latest}"
+            ((ok++)) || true
+        else
+            echo -e "  ${R}✗${NC} ${name} 失败"
+            ((fail++)) || true
+        fi
+    done
+
+    echo -e "\n${BOLD}完成:${NC} ${G}${ok} 成功${NC}  ${R}${fail} 失败${NC}\n"
+}
+
+# ── 命令: install ────────────────────────────────────────
+
+cmd_install() {
+    load_registry
+    local targets=("$@")
+
+    if [ ${#targets[@]} -eq 0 ]; then
+        targets=()
+        for manifest in "${REGISTRY[@]}"; do
+            local name installed
+            name=$(meta_get "$manifest" "name")
+            installed=$(get_installed "$name")
+            [ -z "$installed" ] && targets+=("$name")
+        done
+    fi
+
+    [ ${#targets[@]} -eq 0 ] && { echo "所有工具已安装。"; return; }
+
+    echo ""
+    local ok=0 fail=0
+
+    for tool in "${targets[@]}"; do
+        local manifest
+        manifest=$(find_manifest "$tool")
+        if [ -z "$manifest" ]; then
+            echo -e "${R}[错误]${NC} 未知工具: $tool"
+            ((fail++)) || true
+            continue
+        fi
+
+        local latest
+        latest=$(get_latest_version "$manifest")
+        [ -z "$latest" ] && latest="?"
+
+        echo -e "${B}[安装]${NC} ${BOLD}${tool}${NC}  ${G}${latest}${NC}"
+
+        if (
+            source "$manifest"
+            type upgrade &>/dev/null && upgrade
+        ); then
+            set_installed "$tool" "$latest"
+            echo -e "  ${G}✓${NC} ${tool} ${latest}"
+            ((ok++)) || true
+        else
+            echo -e "  ${R}✗${NC} ${tool} 失败"
+            ((fail++)) || true
+        fi
+    done
+
+    echo -e "\n${BOLD}完成:${NC} ${G}${ok} 成功${NC}  ${R}${fail} 失败${NC}\n"
+}
+
+# ── 命令: upgrade ────────────────────────────────────────
+
+cmd_upgrade() {
+    load_registry
+    local targets=("$@")
+
+    if [ ${#targets[@]} -eq 0 ]; then
+        targets=()
+        for manifest in "${REGISTRY[@]}"; do
+            local name installed
+            name=$(meta_get "$manifest" "name")
+            installed=$(get_installed "$name")
+            [ -n "$installed" ] && targets+=("$name")
+        done
+    fi
+
+    [ ${#targets[@]} -eq 0 ] && { echo "没有已安装的工具。"; return; }
+
+    echo ""
+    local ok=0 fail=0
+
+    for tool in "${targets[@]}"; do
+        local manifest installed latest
+        manifest=$(find_manifest "$tool")
+        [ -z "$manifest" ] && { echo -e "${R}[错误]${NC} 未知工具: $tool"; ((fail++)) || true; continue; }
+
+        installed=$(get_installed "$tool")
+        latest=$(get_latest_version "$manifest")
+
+        echo -e "${B}[升级]${NC} ${BOLD}${tool}${NC}  ${installed:-未安装} → ${G}${latest:-?}${NC}"
+
+        if (
+            source "$manifest"
+            type upgrade &>/dev/null && upgrade
+        ); then
+            set_installed "$tool" "$latest"
+            echo -e "  ${G}✓${NC} ${tool} ${latest}"
+            ((ok++)) || true
+        else
+            echo -e "  ${R}✗${NC} ${tool} 失败"
+            ((fail++)) || true
+        fi
+    done
+
+    echo -e "\n${BOLD}完成:${NC} ${G}${ok} 成功${NC}  ${R}${fail} 失败${NC}\n"
+}
+
+# ── 命令: uninstall ──────────────────────────────────────
+
+cmd_uninstall() {
+    load_registry
+    local targets=("$@")
+    [ ${#targets[@]} -eq 0 ] && { echo "用法: forge uninstall <tool> [tool...]"; return; }
+
+    echo ""
+    for tool in "${targets[@]}"; do
+        local installed
+        installed=$(get_installed "$tool")
+        [ -z "$installed" ] && { echo -e "${Y}[跳过]${NC} $tool 未安装"; continue; }
+
+        [ -d "$TOOLS_DIR/$tool" ] && rm -rf "$TOOLS_DIR/$tool" && echo -e "  删除: $TOOLS_DIR/$tool"
+        [ -d "$RUNTIMES_DIR/$tool" ] && rm -rf "$RUNTIMES_DIR/$tool" && echo -e "  删除: $RUNTIMES_DIR/$tool"
+
+        # 清理 ai/bin/ 中的失效 symlink
+        find "$AI_HOME/bin" -type l ! -exec test -e {} \; -delete 2>/dev/null
+
+        [ -f "$LOCK_FILE" ] && sed -i.bak "/^${tool}|/d" "$LOCK_FILE" && rm -f "$LOCK_FILE.bak"
+
+        echo -e "${G}[卸载]${NC} $tool ($installed)"
+    done
+    echo ""
+}
+
+# ── 命令: pack ────────────────────────────────────────────
+
+cmd_pack() {
+    local out="${1:-forge_$(date +%Y%m%d%H).tgz}"
+    echo -e "${B}[打包]${NC} $out"
+    # 暂存区：将配置放入 ai/ 内，内网解压后自包含
+    local staging="$AI_HOME/tmp/.pack"
+    rm -rf "$staging"
+    mkdir -p "$staging/ai"
+    # 复制 ai/（排除 tmp/cache）
+    rsync -a --exclude='tmp' --exclude='cache' "$AI_HOME/" "$staging/ai/"
+    # 将项目配置放入 ai/
+    [ -d "$ROOT_DIR/config" ] && cp -r "$ROOT_DIR/config" "$staging/ai/"
+    [ -d "$ROOT_DIR/skills" ] && cp -r "$ROOT_DIR/skills" "$staging/ai/"
+    [ -d "$ROOT_DIR/mcp" ] && cp -r "$ROOT_DIR/mcp" "$staging/ai/"
+    # shell/、bin/、scripts/ 放根目录（env.sh 按相对路径加载）
+    [ -d "$ROOT_DIR/shell" ] && cp -r "$ROOT_DIR/shell" "$staging/"
+    [ -d "$ROOT_DIR/bin" ] && cp -r "$ROOT_DIR/bin" "$staging/"
+    [ -d "$ROOT_DIR/scripts" ] && cp -r "$ROOT_DIR/scripts" "$staging/"
+    # env.sh
+    cp "$ROOT_DIR/env.sh" "$staging/"
+    tar -czf "$out" -C "$staging" env.sh ai/ shell/ bin/ scripts/
+    rm -rf "$staging"
+    local size
+    size=$(du -h "$out" | cut -f1)
+    echo -e "${G}[完成]${NC} $out ($size)"
+}
+
+# ── 命令: new ────────────────────────────────────────────
+
+cmd_new() {
+    local name="$1"
+    [ -z "$name" ] && { echo "用法: forge new <tool-name>" >&2; exit 1; }
+
+    local dest="$REGISTRY_DIR/${name}.sh"
+    [ -f "$dest" ] && { echo "manifest 已存在: $dest" >&2; exit 1; }
+
+    cat > "$dest" << 'TEMPLATE'
+#!/usr/bin/env bash
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$_SCRIPT_DIR/../scripts/_common.sh"
+
+# @name: TOOL_NAME
+# @repo: OWNER/REPO
+
+get_latest() {
+    github_latest "OWNER/REPO"
+}
+
+upgrade() {
+    local latest; latest=$(get_latest)
+    [ -z "$latest" ] && { err "无法获取最新版本"; exit 1; }
+    # TODO: 下载逻辑
+    fetch "TOOL_NAME" "https://github.com/OWNER/REPO/releases/download/v${latest}/..." "tar.gz" "strip1"
+}
+TEMPLATE
+
+    sed -i.bak "s/TOOL_NAME/$name/g" "$dest"
+    rm -f "$dest.bak"
+    chmod +x "$dest"
+    echo "已生成: $dest"
+    echo "请编辑 @repo 和 upgrade 函数"
+}
+
+# ── 命令: doctor ──────────────────────────────────────────
+
+cmd_doctor() {
+    echo -e "\n${BOLD}forge doctor${NC} — 环境检查\n"
+    local ok=0 warn=0 fail=0
+
+    # 加载 ai/bin 到 PATH
+    [ -d "$AI_HOME/bin" ] && PATH="$AI_HOME/bin:$PATH"
+    [ -d "$AI_HOME/runtimes/pyenv/bin" ] && PATH="$AI_HOME/runtimes/pyenv/bin:$PATH"
+    [ -d "$AI_HOME/cache/cargo/bin" ] && PATH="$AI_HOME/cache/cargo/bin:$PATH"
+
+    # 1. 检查 ai/bin 中的工具
+    echo -e "${B}[工具链]${NC}"
+    for cmd in rg fd fzf jq yq bat eza delta lazygit sg just uv node python3 go rustc cargo claude codex bun openspec; do
+        if command -v "$cmd" &>/dev/null; then
+            local ver="ok"
+            set +e
+            case "$cmd" in
+                rg)       ver=$(rg --version 2>/dev/null | head -1 | awk '{print $2}') ;;
+                python3)  ver=$(python3 --version 2>/dev/null | awk '{print $2}') ;;
+                node)     ver=$(node --version 2>/dev/null) ;;
+                go)       ver=$(go version 2>/dev/null | awk '{print $3}' | sed 's/go//') ;;
+                rustc)    ver=$(rustc --version 2>/dev/null | awk '{print $2}') ;;
+                claude)   ver=$(claude --version 2>/dev/null | head -1) ;;
+                codex)    ver=$(codex --version 2>/dev/null | head -1) ;;
+                bun)      ver=$(bun --version 2>/dev/null) ;;
+                openspec) ver=$(openspec --version 2>/dev/null | head -1) ;;
+            esac
+            set -e
+            printf "  ${G}✓${NC} %-14s %s\n" "$cmd" "$ver"
+            ((ok++)) || true
+        else
+            printf "  ${R}✗${NC} %-14s 未找到\n" "$cmd"
+            ((fail++)) || true
+        fi
+    done
+
+    # 2. 检查代理连通性
+    echo -e "\n${B}[网络]${NC}"
+    local targets=("https://github.com" "https://registry.npmmirror.com" "https://mirrors.aliyun.com" "https://goproxy.cn" "https://rsproxy.cn")
+    for url in "${targets[@]}"; do
+        if curl -sI --connect-timeout 5 "$url" &>/dev/null; then
+            printf "  ${G}✓${NC} %s\n" "$url"
+            ((ok++)) || true
+        else
+            printf "  ${Y}!${NC} %s 不可达\n" "$url"
+            ((warn++)) || true
+        fi
+    done
+
+    # 3. 检查目录结构
+    echo -e "\n${B}[目录]${NC}"
+    local dirs=("$AI_HOME/bin" "$AI_HOME/tools" "$AI_HOME/runtimes" "$ROOT_DIR/config" "$ROOT_DIR/skills" "$ROOT_DIR/mcp" "$ROOT_DIR/shell" "$ROOT_DIR/bin")
+    for d in "${dirs[@]}"; do
+        if [ -d "$d" ]; then
+            local count
+            count=$(ls -1 "$d" 2>/dev/null | wc -l | tr -d ' ')
+            printf "  ${G}✓${NC} %-30s (%s 项)\n" "${d#$ROOT_DIR/}" "$count"
+            ((ok++)) || true
+        else
+            printf "  ${Y}!${NC} %-30s 不存在\n" "${d#$ROOT_DIR/}"
+            ((warn++)) || true
+        fi
+    done
+
+    # 4. 检查配置链接
+    echo -e "\n${B}[配置]${NC}"
+    if [ -L "$HOME/.claude/skills" ] || [ -d "$HOME/.claude/skills" ]; then
+        local scount
+        scount=$(ls -1 "$HOME/.claude/skills" 2>/dev/null | wc -l | tr -d ' ')
+        printf "  ${G}✓${NC} ~/.claude/skills/ (%s 个 skill)\n" "$scount"
+        ((ok++)) || true
+    else
+        printf "  ${R}✗${NC} ~/.claude/skills/ 未链接\n"
+        ((fail++)) || true
+    fi
+    if [ -f "$HOME/.claude/mcp.json" ]; then
+        local mcp_count
+        mcp_count=$(python3 -c "import json; print(len(json.load(open('$HOME/.claude/mcp.json')).get('mcpServers',{})))" 2>/dev/null || echo 0)
+        printf "  ${G}✓${NC} ~/.claude/mcp.json (%s 个 server)\n" "$mcp_count"
+        ((ok++)) || true
+    else
+        printf "  ${Y}!${NC} ~/.claude/mcp.json 不存在\n"
+        ((warn++)) || true
+    fi
+
+    echo -e "\n${BOLD}结果:${NC} ${G}${ok} 通过${NC}  ${Y}${warn} 警告${NC}  ${R}${fail} 失败${NC}\n"
+}
+
+# ── 命令: export ─────────────────────────────────────────
+
+cmd_export() {
+    local out="${1:-forge-config_$(date +%Y%m%d%H).tgz}"
+    echo -e "${B}[导出]${NC} $out（配置清单，不含工具二进制）"
+    tar -czf "$out" -C "$ROOT_DIR" \
+        env.sh forge registry/ scripts/ config/ skills/ mcp/ shell/ bin/
+    local size
+    size=$(du -h "$out" | cut -f1)
+    echo -e "${G}[完成]${NC} $out ($size)"
+    echo ""
+    echo "  目标机器：tar xzf $out && cd forgestack && ./forge install"
+}
+
+# ── 命令: skills ──────────────────────────────────────────
+
+SKILLS_DIR="$ROOT_DIR/skills"
+
+# 用 git sparse checkout 下载单个 skill 目录
+_git_sparse_clone() {
+    local repo="$1" src_path="$2" dest="$3"
+    local tmp="$AI_HOME/tmp/.skill_$$"
+    rm -rf "$tmp"
+    mkdir -p "$tmp"
+
+    git clone --depth 1 --filter=blob:none --sparse \
+        "https://github.com/${repo}.git" "$tmp" 2>/dev/null || return 1
+    git -C "$tmp" sparse-checkout set "$src_path" 2>/dev/null || return 1
+
+    mkdir -p "$dest"
+    if [ -d "$tmp/$src_path" ]; then
+        cp -r "$tmp/$src_path"/* "$dest/" 2>/dev/null
+        cp -r "$tmp/$src_path"/.[!.]* "$dest/" 2>/dev/null || true  # 隐藏文件
+    fi
+    rm -rf "$tmp"
+}
+
+# 安装单个 skill
+_install_one_skill() {
+    local owner="$1" repo="$2" skill="$3"
+    local dest="$SKILLS_DIR/$skill"
+    [ -d "$dest/SKILL.md" ] && { echo -e "${Y}[已存在]${NC} $skill"; return 0; }
+    [ -d "$dest" ] && [ -f "$dest/SKILL.md" ] && { echo -e "${Y}[已存在]${NC} $skill"; return 0; }
+
+    echo -ne "${B}[下载]${NC} $owner/$repo/$skill ... "
+
+    # 尝试多 skill 仓库路径 skills/{name}
+    _git_sparse_clone "$owner/$repo" "skills/$skill" "$dest" && {
+        echo -e "${G}ok${NC}"
+        _skills_post_install "$skill" "$dest"
+        return 0
+    }
+
+    # 尝试单 skill 仓库（SKILL.md 在根目录）
+    _git_sparse_clone "$owner/$repo" "." "$dest" && {
+        echo -e "${G}ok${NC}"
+        _skills_post_install "$skill" "$dest"
+        return 0
+    }
+
+    echo -e "${R}失败${NC}"
+    return 1
+}
+
+# 安装后处理：依赖 + 链接
+_skills_post_install() {
+    local skill="$1" dest="$2"
+
+    # 安装 Python 依赖
+    if [ -f "$dest/scripts/requirements.txt" ]; then
+        echo -ne "  安装依赖 ... "
+        pip3 install -q -r "$dest/scripts/requirements.txt" 2>/dev/null && echo -e "${G}ok${NC}" || echo -e "${Y}跳过${NC}"
+    fi
+
+    # 链接到 ~/.claude/skills/
+    mkdir -p "$HOME/.claude/skills"
+    ln -sfn "$dest" "$HOME/.claude/skills/$skill"
+}
+
+_skills_install() {
+    local spec="$1"
+    [ -z "$spec" ] && { echo "用法: forge skills install <owner/repo[/skill]>"; return 1; }
+
+    local owner repo skill
+    IFS='/' read -r owner repo skill <<< "$spec"
+
+    if [ -z "$skill" ]; then
+        # 2 段：owner/repo → 安装仓库中所有 skills
+        echo -e "${B}[插件]${NC} $owner/$repo"
+        local tmp="$AI_HOME/tmp/.plugin_$$"
+        rm -rf "$tmp"
+        git clone --depth 1 "https://github.com/${owner}/${repo}.git" "$tmp" 2>/dev/null || {
+            echo -e "${R}[错误]${NC} 无法克隆 $owner/$repo"
+            return 1
+        }
+
+        # 收集 skill 列表
+        local -a skills_list=()
+
+        # 方式1: marketplace.json
+        if [ -f "$tmp/.claude-plugin/marketplace.json" ]; then
+            while IFS= read -r s; do
+                [ -n "$s" ] && skills_list+=("$(basename "$s")")
+            done < <(python3 -c "
+import json,sys
+d=json.load(open('$tmp/.claude-plugin/marketplace.json'))
+for p in d.get('plugins',[]):
+    for s in p.get('skills',[]):
+        print(s)
+" 2>/dev/null || true)
+        fi
+
+        # 方式2: 扫描 skills/ 目录
+        if [ "${#skills_list[@]}" -eq 0 ] && [ -d "$tmp/skills" ]; then
+            for d in "$tmp/skills"/*/; do
+                [ -f "${d}SKILL.md" ] && skills_list+=("$(basename "$d")")
+            done
+        fi
+
+        # 方式3: 单 skill 仓库（根目录有 SKILL.md）
+        if [ "${#skills_list[@]}" -eq 0 ] && [ -f "$tmp/SKILL.md" ]; then
+            skills_list+=("$repo")
+            mkdir -p "$SKILLS_DIR/$repo"
+            cp -r "$tmp"/* "$SKILLS_DIR/$repo/" 2>/dev/null
+            cp -r "$tmp"/.[!.]* "$SKILLS_DIR/$repo/" 2>/dev/null || true
+            _skills_post_install "$repo" "$SKILLS_DIR/$repo"
+            echo -e "${G}[完成]${NC} $repo"
+            rm -rf "$tmp"
+            return 0
+        fi
+
+        # 安装每个 skill
+        if [ "${#skills_list[@]}" -eq 0 ]; then
+            echo -e "${Y}[注意]${NC} 未找到任何 skill"
+            rm -rf "$tmp"
+            return 1
+        fi
+        local ok=0 fail=0
+        for s in "${skills_list[@]}"; do
+            local dest="$SKILLS_DIR/$s"
+            if [ -d "$tmp/skills/$s" ]; then
+                mkdir -p "$dest"
+                cp -r "$tmp/skills/$s"/* "$dest/" 2>/dev/null
+                cp -r "$tmp/skills/$s"/.[!.]* "$dest/" 2>/dev/null || true
+                _skills_post_install "$s" "$dest"
+                echo -e "  ${G}✓${NC} $s"
+                ((ok++)) || true
+            else
+                echo -e "  ${R}✗${NC} $s (未找到)"
+                ((fail++)) || true
+            fi
+        done
+        rm -rf "$tmp"
+        echo -e "\n${BOLD}完成:${NC} ${G}${ok} 成功${NC}  ${R}${fail} 失败${NC}"
+        return 0
+    fi
+
+    # 3 段：owner/repo/skill → 安装单个 skill
+    _install_one_skill "$owner" "$repo" "$skill"
+}
+
+_skills_list() {
+    echo -e "\n${BOLD}已安装 Skills${NC}"
+    echo -e "${D}$(printf '%.0s─' {1..40})${NC}"
+    local count=0
+    for d in "$SKILLS_DIR"/*/; do
+        [ -d "$d" ] || continue
+        local name
+        name=$(basename "$d")
+        local desc=""
+        [ -f "$d/SKILL.md" ] && desc=$(sed -n 's/^description: //p' "$d/SKILL.md" | head -1 | sed 's/^"//;s/"$//')
+        printf "  %-24s %s\n" "$name" "${desc:0:50}"
+        ((count++)) || true
+    done
+    [ $count -eq 0 ] && echo -e "  ${D}(无)${NC}"
+    echo ""
+}
+
+_skills_remove() {
+    local name="$1"
+    [ -z "$name" ] && { echo "用法: forge skills remove <name>"; return 1; }
+    local dest="$SKILLS_DIR/$name"
+    [ ! -d "$dest" ] && { echo -e "${Y}[跳过]${NC} $name 未安装"; return 0; }
+    rm -rf "$dest"
+    rm -f "$HOME/.claude/skills/$name"
+    echo -e "${G}[删除]${NC} $name"
+}
+
+cmd_skills() {
+    local subcmd="${1:-}"
+    shift 2>/dev/null || true
+    case "$subcmd" in
+        install)  _skills_install "$@" ;;
+        list|ls)  _skills_list ;;
+        remove|rm) _skills_remove "$@" ;;
+        *)
+            echo "用法: forge skills <子命令>"
+            echo ""
+            echo "  install <owner/repo/skill>  下载 skill"
+            echo "  list                        显示已安装 skills"
+            echo "  remove <name>               删除 skill"
+            ;;
+    esac
+}
+
+# ── 帮助 ─────────────────────────────────────────────────
+
+show_help() {
+    cat << 'EOF'
+
+forge - AI 工具版本管理器
+
+用法:
+  forge                     检查并提示更新（类似 brew cu）
+  forge -a                  检查并更新全部（类似 brew cu -a）
+
+  forge install             安装所有未安装的工具
+  forge install <tool>      安装指定工具
+  forge uninstall <tool>    卸载指定工具
+
+  forge list                显示所有工具状态
+  forge update              仅检查可用更新
+  forge upgrade             更新全部已安装工具
+  forge upgrade <tool>      更新指定工具
+
+  forge new <name>          生成新工具的 manifest 模板
+  forge pack [file.tgz]    打包 env.sh + ai/ 用于内网迁移
+
+  forge skills install <owner/repo/skill>  下载 skill
+  forge skills list                        显示已安装 skills
+  forge skills remove <name>               删除 skill
+
+  forge doctor                             环境检查
+  forge export [file.tgz]                  导出配置（不含二进制）
+
+EOF
+}
+
+# ── 主入口 ───────────────────────────────────────────────
+
+case "${1:-}" in
+    -a|--all)       cmd_check "true" ;;
+    install)        shift; cmd_install "$@" ;;
+    uninstall|rm)   shift; cmd_uninstall "$@" ;;
+    list|ls)        cmd_list ;;
+    update)         cmd_check "false" ;;
+    upgrade)        shift; cmd_upgrade "$@" ;;
+    new)            shift; cmd_new "$@" ;;
+    pack)           shift; cmd_pack "$@" ;;
+    skills)         shift; cmd_skills "$@" ;;
+    doctor)         cmd_doctor ;;
+    export)         shift; cmd_export "$@" ;;
+    help|--help|-h) show_help ;;
+    "")             cmd_check "false" ;;
+    *)              show_help; exit 1 ;;
+esac

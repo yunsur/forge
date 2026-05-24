@@ -1,0 +1,11 @@
+name: forge-lite
+description: ForgeStack 精简工作流 — 仅保留 proposal、design、tasks
+artifacts:
+  - name: proposal
+    description: 需求提案
+  - name: design
+    description: 设计文档
+    depends_on: [proposal]
+  - name: tasks
+    description: 任务清单
+    depends_on: [design]
