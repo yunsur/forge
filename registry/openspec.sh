@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: openspec
 # @repo: Fission-AI/OpenSpec
@@ -18,13 +18,20 @@ upgrade() {
 
     local latest; latest=$(get_latest)
     [ -z "$latest" ] && { err "无法获取最新版本"; exit 1; }
-    _log "下载" "OpenSpec ${latest}"
+    fetch "openspec" \
+        "https://registry.npmjs.org/@fission-ai/openspec/-/openspec-${latest}.tgz" \
+        "tgz" "flat"
+    npm install -g "$TOOLS_DIR/openspec/package" --prefix "$TOOLS_DIR/openspec" 2>/dev/null
+    rm -rf "$TOOLS_DIR/openspec/package"
+    link_binary "$TOOLS_DIR/openspec/bin/openspec"
+}
+
+install_from() {
+    local file="$1"
     local dest="$TOOLS_DIR/openspec"
     mkdir -p "$dest"
-    curl -fSL -o "$TMP_DIR/openspec.tgz" \
-        "https://registry.npmjs.org/@fission-ai/openspec/-/openspec-${latest}.tgz"
-    npm install -g "$TMP_DIR/openspec.tgz" --prefix "$dest" 2>/dev/null
-    rm -f "$TMP_DIR/openspec.tgz"
+    tar -xzf "$file" -C "$dest"
+    npm install -g "$dest/package" --prefix "$dest" 2>/dev/null
+    rm -rf "$dest/package"
     link_binary "$dest/bin/openspec"
-    ok "openspec $latest"
 }

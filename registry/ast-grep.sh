@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: ast-grep
 # @repo: ast-grep/ast-grep
@@ -15,5 +15,11 @@ upgrade() {
     fetch "ast-grep" \
         "https://github.com/ast-grep/ast-grep/releases/download/${latest}/app-${arch}-unknown-linux-gnu.zip" \
         "zip" "flat-binary" "sg"
+    link_binary "$TOOLS_DIR/ast-grep/sg" "sg"
+}
+
+install_from() {
+    local file="$1"
+    install_from_file "$file" "ast-grep" "zip" "flat-binary" "sg"
     link_binary "$TOOLS_DIR/ast-grep/sg" "sg"
 }

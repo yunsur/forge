@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: lazygit
 # @repo: jesseduffield/lazygit
@@ -17,5 +17,11 @@ upgrade() {
     fetch "lazygit" \
         "https://github.com/jesseduffield/lazygit/releases/download/v${latest}/lazygit_${latest}_Linux_${arch}.tar.gz" \
         "tar.gz" "flat-binary" "lazygit"
+    link_binary "$TOOLS_DIR/lazygit/lazygit"
+}
+
+install_from() {
+    local file="$1"
+    install_from_file "$file" "lazygit" "tar.gz" "flat-binary" "lazygit"
     link_binary "$TOOLS_DIR/lazygit/lazygit"
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: delta
 # @repo: dandavison/delta
@@ -15,5 +15,11 @@ upgrade() {
     fetch "delta" \
         "https://github.com/dandavison/delta/releases/download/${latest}/delta-${latest}-${arch}-unknown-linux-musl.tar.gz" \
         "tar.gz" "strip1"
+    link_binary "$TOOLS_DIR/delta/delta"
+}
+
+install_from() {
+    local file="$1"
+    install_from_file "$file" "delta" "tar.gz" "strip1"
     link_binary "$TOOLS_DIR/delta/delta"
 }

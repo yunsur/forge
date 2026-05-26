@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: just
 # @repo: casey/just
@@ -15,5 +15,11 @@ upgrade() {
     fetch "just" \
         "https://github.com/casey/just/releases/download/${latest}/just-${latest}-${arch}-unknown-linux-musl.tar.gz" \
         "tar.gz" "flat-binary" "just"
+    link_binary "$TOOLS_DIR/just/just"
+}
+
+install_from() {
+    local file="$1"
+    install_from_file "$file" "just" "tar.gz" "flat-binary" "just"
     link_binary "$TOOLS_DIR/just/just"
 }

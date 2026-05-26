@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: go
 # @desc: 下载 Go 工具链
@@ -18,6 +18,15 @@ upgrade() {
     local arch="amd64"; [ "$ARCH" = "aarch64" ] && arch="arm64"
     local url="https://go.dev/dl/go${latest}.linux-${arch}.tar.gz"
     fetch "go" "$url" "tar.gz" "strip1"
+    link_binary "$TOOLS_DIR/go/bin/go"
+    link_binary "$TOOLS_DIR/go/bin/gofmt"
+}
+
+install_from() {
+    local file="$1"
+    local dest="$TOOLS_DIR/go"
+    mkdir -p "$dest"
+    tar -xzf "$file" -C "$dest" --strip-components=1
     link_binary "$TOOLS_DIR/go/bin/go"
     link_binary "$TOOLS_DIR/go/bin/gofmt"
 }

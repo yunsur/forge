@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: fd
 # @repo: sharkdp/fd
@@ -15,5 +15,11 @@ upgrade() {
     fetch "fd" \
         "https://github.com/sharkdp/fd/releases/download/v${latest}/fd-v${latest}-${arch}-unknown-linux-musl.tar.gz" \
         "tar.gz" "strip1"
+    link_binary "$TOOLS_DIR/fd/fd"
+}
+
+install_from() {
+    local file="$1"
+    install_from_file "$file" "fd" "tar.gz" "strip1"
     link_binary "$TOOLS_DIR/fd/fd"
 }

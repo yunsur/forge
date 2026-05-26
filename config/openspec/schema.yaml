@@ -1,5 +1,5 @@
 name: forge-lite
-description: ForgeStack 精简工作流 — 仅保留 proposal、design、tasks
+description: Forge 精简工作流 — 仅保留 proposal、design、tasks
 artifacts:
   - name: proposal
     description: 需求提案

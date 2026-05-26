@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: yq
 # @repo: mikefarah/yq
@@ -15,5 +15,11 @@ upgrade() {
     fetch "yq" \
         "https://github.com/mikefarah/yq/releases/download/v${latest}/yq_linux_${arch}.tar.gz" \
         "tar.gz" "flat-binary" "yq"
+    link_binary "$TOOLS_DIR/yq/yq"
+}
+
+install_from() {
+    local file="$1"
+    install_from_file "$file" "yq" "tar.gz" "flat-binary" "yq"
     link_binary "$TOOLS_DIR/yq/yq"
 }

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────
-# ForgeStack 团队配置脚本
+# Forge 团队配置脚本
 # 用法: source scripts/team-setup.sh
 #
 # 环境变量（执行前设置）:
 #   GBRAIN_SERVER    GBrain 服务器地址 (如 http://192.168.1.100:3131)
 #   GBRAIN_TOKEN     GBrain 访问 token（可选）
 #   GITLAB_URL       内部 GitLab 地址 (如 http://gitlab.internal)
-#   TEAM_GROUP       GitLab 团组名 (如 forgestack-team)
+#   TEAM_GROUP       GitLab 团组名 (如 forge-team)
 # ─────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -184,7 +184,7 @@ setup_gbrain_server() {
     echo "  在 GBrain 服务器上运行此命令:"
     echo ""
     echo "  # 1. 安装 gbrain"
-    echo "  cd /path/to/forgestack && source env.sh"
+    echo "  cd /path/to/forge && source env.sh"
     echo ""
     echo "  # 2. 初始化 PGLite"
     echo "  gbrain init --pglite --json"
@@ -208,7 +208,7 @@ case "${1:-}" in
     claude-md)  generate_team_claude_md "${2:-.}" ;;
     server)     setup_gbrain_server ;;
     all|"")
-        echo -e "\n${BOLD}ForgeStack 团队配置${NC}\n"
+        echo -e "\n${BOLD}Forge 团队配置${NC}\n"
         echo "用法: source scripts/team-setup.sh <子命令>"
         echo ""
         echo "  gbrain      配置 GBrain 客户端连接"

@@ -4,54 +4,12 @@
 # 用法: source ~/ai/env.sh
 # ─────────────────────────────────────────────────────────
 
-AI_HOME="$HOME/ai"
+_forge_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+AI_HOME="$_forge_root/ai"
 RUNTIMES="$AI_HOME/runtimes"
 
-# ── 开发模式：从项目目录同步到 ai/ ──────────────────────
-_forge_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -d "$_forge_root/config" ] && [ "$_forge_root" != "$AI_HOME" ]; then
-    mkdir -p "$AI_HOME/config"
-    [ -d "$_forge_root/config/claude" ] && cp -r "$_forge_root/config/claude" "$AI_HOME/config/" 2>/dev/null
-    [ -d "$_forge_root/config/codex" ] && cp -r "$_forge_root/config/codex" "$AI_HOME/config/" 2>/dev/null
-    [ -d "$_forge_root/skills" ] && ln -sfn "$_forge_root/skills" "$AI_HOME/skills"
-    [ -d "$_forge_root/mcp" ] && ln -sfn "$_forge_root/mcp" "$AI_HOME/mcp"
-fi
-unset _forge_root
-
-# ── 配置文件链接：ai/config/ → ~/.xxx/ ──────────────────
-# Claude Code: ai/config/claude/setting.json → ~/.claude/setting.json
-if [ -d "$AI_HOME/config/claude" ]; then
-    mkdir -p "$HOME/.claude"
-    for f in "$AI_HOME/config/claude"/*; do
-        [ -f "$f" ] && ln -sfn "$f" "$HOME/.claude/$(basename "$f")"
-    done
-fi
-# Codex: ai/config/codex/* → ~/.codex/*
-if [ -d "$AI_HOME/config/codex" ]; then
-    mkdir -p "$HOME/.codex"
-    for f in "$AI_HOME/config/codex"/*; do
-        [ -f "$f" ] && ln -sfn "$f" "$HOME/.codex/$(basename "$f")"
-    done
-fi
-# Skills: ai/skills/* → ~/.claude/skills/*
-if [ -d "$AI_HOME/skills" ]; then
-    mkdir -p "$HOME/.claude/skills"
-    for d in "$AI_HOME/skills"/*/; do
-        [ -d "$d" ] && ln -sfn "$d" "$HOME/.claude/skills/$(basename "$d")"
-    done
-fi
-# MCP: ai/mcp/*.json → ~/.claude/mcp.json（合并所有 MCP 配置）
-if [ -d "$AI_HOME/mcp" ]; then
-    mkdir -p "$HOME/.claude"
-    python3 -c "
-import json,os,glob
-base={'mcpServers':{}}
-for f in sorted(glob.glob('$AI_HOME/mcp/*.json')):
-    with open(f) as fh: d=json.load(fh)
-    base['mcpServers'].update(d.get('mcpServers',{}))
-with open('$HOME/.claude/mcp.json','w') as fh: json.dump(base,fh,indent=2)
-" 2>/dev/null
-fi
+# 注意：配置文件、skills、MCP 的部署由 init.sh 完成
+# env.sh 仅负责环境变量设置，不执行任何文件操作
 
 # ── 代理（按实际地址取消注释）───────────────────────────
 # export HTTP_PROXY="http://127.0.0.1:7890"
@@ -84,14 +42,7 @@ if command -v cargo &>/dev/null; then
     [ -d "$CARGO_HOME/bin" ] && PATH="$CARGO_HOME/bin:$PATH"
 fi
 
-# ── CUDA（可选）──────────────────────────────────────────
-if [ -d "$AI_HOME/cuda" ]; then
-    export CUDA_HOME="$AI_HOME/cuda"
-    PATH="$CUDA_HOME/bin:$PATH"
-    LD_LIBRARY_PATH="$CUDA_HOME/lib64:${LD_LIBRARY_PATH:-}"
-fi
-
-# ── 工具二进制 ───────────────────────────────────────────
+# ── 工具二进制（最高优先级，覆盖 pyenv shims）────────
 [ -d "$AI_HOME/bin" ] && PATH="$AI_HOME/bin:$PATH"
 
 # ── 导出 ─────────────────────────────────────────────────
@@ -134,6 +85,7 @@ fi
 if command -v fzf &>/dev/null; then
     export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"
     command -v fd &>/dev/null && export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git"
+    alias preview="fzf --preview 'bat --color=always {}'"
 fi
 
 # ── bat ──────────────────────────────────────────────────
@@ -146,18 +98,33 @@ fi
 if command -v eza &>/dev/null; then
     alias ls="eza --icons"
     alias ll="eza -la --icons --git"
-    alias tree="eza --tree --icons"
+    alias tree="eza --tree --icons --level=3"
 fi
 
-# ── 自定义脚本 bin/ + shell 配置 ─────────────────────────
-_forge_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -d "$_forge_root/bin" ]; then
-    for f in "$_forge_root/bin"/*; do
-        [ -f "$f" ] && [ ! -L "$AI_HOME/bin/$(basename "$f")" ] && \
-            ln -sf "$f" "$AI_HOME/bin/$(basename "$f")"
-    done
-fi
-for f in "$_forge_root/shell"/*.sh; do
-    [ -f "$f" ] && source "$f"
-done
+# ── 快速导航 ─────────────────────────────────────────────
+alias ai="cd $AI_HOME"
+alias forgework="cd $_forge_root"
+alias ..="cd .."
+alias ...="cd ../.."
+
+# ── git ──────────────────────────────────────────────────
+alias g="git"
+alias gs="git status -sb"
+alias gd="git diff"
+alias gds="git diff --staged"
+alias gl="git log --oneline -20"
+alias gp="git pull --rebase"
+alias gc="git commit"
+alias gco="git checkout"
+alias gb="git branch -a"
+
+# 快速搜索文件内容
+ff() { rg --color=always "$@" 2>/dev/null || grep -rn "$@" .; }
+
+# 创建目录并进入
+mkcd() { mkdir -p "$1" && cd "$1"; }
+
+# 查看环境变量
+envs() { env | grep -i "${1:-}" | sort; }
+
 unset _forge_root

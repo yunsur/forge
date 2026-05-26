@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: eza
 # @repo: eza-community/eza
@@ -15,5 +15,11 @@ upgrade() {
     fetch "eza" \
         "https://github.com/eza-community/eza/releases/download/v${latest}/eza_${arch}-unknown-linux-musl.tar.gz" \
         "tar.gz" "flat-binary" "eza"
+    link_binary "$TOOLS_DIR/eza/eza"
+}
+
+install_from() {
+    local file="$1"
+    install_from_file "$file" "eza" "tar.gz" "flat-binary" "eza"
     link_binary "$TOOLS_DIR/eza/eza"
 }

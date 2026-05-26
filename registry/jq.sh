@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: jq
 # @repo: jqlang/jq
@@ -19,5 +19,11 @@ upgrade() {
     fetch "jq" \
         "https://github.com/jqlang/jq/releases/download/jq-${latest}/jq-linux-${arch}" \
         "binary" "jq"
+    link_binary "$TOOLS_DIR/jq/jq"
+}
+
+install_from() {
+    local file="$1"
+    install_from_file "$file" "jq" "binary" "" "jq"
     link_binary "$TOOLS_DIR/jq/jq"
 }

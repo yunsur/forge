@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: bun
 # @repo: oven-sh/bun
@@ -20,4 +20,9 @@ upgrade() {
     fetch "bun" \
         "https://github.com/oven-sh/bun/releases/download/bun-v${latest}/bun-linux-${arch}.zip" \
         "zip" "flat-binary" "bun"
+}
+
+install_from() {
+    local file="$1"
+    install_from_file "$file" "bun" "zip" "flat-binary" "bun"
 }

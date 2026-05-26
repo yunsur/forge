@@ -1,4 +1,4 @@
-# ForgeStack
+# Forge
 
 离线 AI 工作站 — 一个自包含的 AI 开发环境，支持内网迁移。
 
@@ -18,7 +18,7 @@ source env.sh
 ## 目录结构
 
 ```
-forgestack/
+forge/
 ├── forge              # CLI 工具（安装/更新/打包）
 ├── env.sh             # 环境变量（source 加载）
 ├── registry/          # 工具清单（每个工具一个 .sh）
@@ -112,7 +112,7 @@ scp forge-*.tgz target:~/
 
 # 内网机器：解压
 tar xzf forge-*.tgz
-cd forgestack
+cd forge
 source env.sh
 # 如果用 export：./forge install（需要内网有镜像源）
 ```
@@ -212,7 +212,7 @@ crontab -e
 
 ```bash
 # 1. 解压工具包
-tar xzf forge-*.tgz && cd forgestack && source env.sh
+tar xzf forge-*.tgz && cd forge && source env.sh
 
 # 2. 连接 GBrain 服务器
 GBRAIN_SERVER=http://<服务器IP>:3131 source scripts/team-setup.sh gbrain

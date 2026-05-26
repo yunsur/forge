@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: claude
 # @repo: anthropics/claude-code
@@ -56,4 +56,13 @@ upgrade() {
 
     # 更新版本
     ok "claude $latest"
+}
+
+install_from() {
+    local file="$1"
+    local dest="$TOOLS_DIR/claude"
+    mkdir -p "$dest"
+    cp "$file" "$dest/claude"
+    chmod +x "$dest/claude"
+    link_binary "$TOOLS_DIR/claude/claude"
 }

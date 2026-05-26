@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: pyenv
 # @repo: pyenv/pyenv
@@ -11,18 +11,21 @@ get_latest() { local tag; tag=$(github_latest "pyenv/pyenv"); echo "${tag#v}"; }
 upgrade() {
     local latest; latest=$(get_latest)
     [ -z "$latest" ] && { err "无法获取最新版本"; exit 1; }
-    _log "下载" "pyenv ${latest}"
+    local dest="$RUNTIMES_DIR/pyenv"
+    fetch "pyenv" \
+        "https://github.com/pyenv/pyenv/archive/refs/tags/v${latest}.tar.gz" \
+        "tar.gz" "strip1"
+    fetch_to "$dest/plugins/pyenv-virtualenv" \
+        "https://github.com/pyenv/pyenv-virtualenv/archive/refs/heads/master.tar.gz" \
+        "tar.gz" "strip1"
+    link_binary "$RUNTIMES_DIR/pyenv/bin/pyenv"
+}
+
+install_from() {
+    local file="$1"
     local dest="$RUNTIMES_DIR/pyenv"
     mkdir -p "$dest"
-    curl -fSL -o "$TMP_DIR/pyenv.tar.gz" \
-        "https://github.com/pyenv/pyenv/archive/refs/tags/v${latest}.tar.gz"
-    tar -xzf "$TMP_DIR/pyenv.tar.gz" -C "$dest" --strip-components=1
-    _log "下载" "pyenv-virtualenv"
-    curl -fSL -o "$TMP_DIR/pyenv-virtualenv.tar.gz" \
-        "https://github.com/pyenv/pyenv-virtualenv/archive/refs/heads/master.tar.gz"
-    mkdir -p "$dest/plugins/pyenv-virtualenv"
-    tar -xzf "$TMP_DIR/pyenv-virtualenv.tar.gz" -C "$dest/plugins/pyenv-virtualenv" --strip-components=1
-    rm -f "$TMP_DIR/pyenv.tar.gz" "$TMP_DIR/pyenv-virtualenv.tar.gz"
+    tar -xzf "$file" -C "$dest" --strip-components=1
+    # pyenv-virtualenv 由 forge install 单独下载，此处只处理 pyenv 主体
     link_binary "$RUNTIMES_DIR/pyenv/bin/pyenv"
-    ok "pyenv"
 }

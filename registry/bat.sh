@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: bat
 # @repo: sharkdp/bat
@@ -15,5 +15,11 @@ upgrade() {
     fetch "bat" \
         "https://github.com/sharkdp/bat/releases/download/v${latest}/bat-v${latest}-${arch}-unknown-linux-musl.tar.gz" \
         "tar.gz" "strip1"
+    link_binary "$TOOLS_DIR/bat/bat"
+}
+
+install_from() {
+    local file="$1"
+    install_from_file "$file" "bat" "tar.gz" "strip1"
     link_binary "$TOOLS_DIR/bat/bat"
 }

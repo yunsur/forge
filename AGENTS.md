@@ -1,28 +1,40 @@
-# ForgeStack — AI Agent 指南
+# Forge — AI Agent 指南
 
 ## 项目概览
 
-ForgeStack 是一个离线可用的 AI 开发工作站，基于纯 Bash 构建。核心功能是安装、版本管理和打包一套精选的 CLI 工具、AI Agent 技能和 MCP 服务器配置，支持打包为 tarball 部署到内网/离线机器。
+Forge 是一个离线可用的 AI 开发工作站，基于纯 Bash 构建。核心功能是版本管理和打包一套精选的 CLI 工具、AI Agent 技能和 MCP 服务器配置，支持打包为 tarball 部署到内网/离线机器。
 
 ## 架构
 
 ```
-forgestack/
-├── forge                  # 主 CLI（~750 行 bash）
-├── env.sh                 # 环境加载器（source 到 shell）
+forge/
+├── forge                  # CLI 入口（薄脚本，~45 行）
+├── shell/
+│   ├── env.sh             # 运行时环境加载器（source 到 shell）
+│   └── forge/
+│       ├── common.sh      # 公共函数库 + forge 共享函数
+│       ├── check.sh       # update 命令（检查更新 + 缓存版本）
+│       ├── download.sh    # download 命令（只下载不解压）
+│       ├── init.sh        # init 命令（解压部署到运行环境）
+│       ├── list.sh        # list 命令（3 列显示）
+│       ├── pack.sh        # pack 命令（打包整站）
+│       ├── uninstall.sh   # uninstall 命令
+│       ├── new.sh         # new 命令（生成 manifest 模板）
+│       ├── doctor.sh      # doctor 命令（环境检查）
+│       ├── skills.sh      # skills 管理
+│       └── help.sh        # 帮助信息
 ├── registry/              # 工具清单脚本（每个 .sh = 一个工具）
-├── scripts/
-│   ├── _common.sh         # 公共函数库（fetch, link_binary, github_latest）
-│   ├── gbrain-server.sh   # GBrain 知识服务器部署
-│   └── team-setup.sh      # 团队协作配置
 ├── skills/                # 15 个 Agent Skills（SKILL.md 驱动）
 ├── mcp/                   # MCP 服务器配置（JSON，合并到 ~/.claude/mcp.json）
 ├── config/                # 配置模板（symlink 到 ~/）
 ├── shell/                 # Shell 别名和辅助函数
+├── download/              # 下载缓存
+│   ├── download.manifest  # 下载记录：name|version|filename
+│   └── update.manifest    # 最新版本缓存：name|version
 └── ai/                    # 运行时目录（gitignored）
     ├── tools/             # 已安装工具目录
     ├── bin/               # 工具二进制 symlink
-    ├── versions.lock      # 已安装版本记录（管道分隔）
+    ├── versions.lock      # 已安装版本记录：name|version|date
     └── runtimes/          # pyenv + python
 ```
 
@@ -30,10 +42,40 @@ forgestack/
 
 | 文件 | 用途 |
 |------|------|
-| `forge` | 主 CLI，实现 install/upgrade/uninstall/list/update/pack/export/doctor/new/skills |
-| `env.sh` | 环境加载器，配置 PATH、镜像源、symlink 配置文件、合并 MCP JSON |
-| `scripts/_common.sh` | 公共函数：`github_latest()`, `fetch()`, `fetch_to()`, `link_binary()`, `_curl_opts()` |
-| `ai/versions.lock` | 版本锁定文件，格式：`工具名|版本|日期` |
+| `forge` | CLI 入口，source `shell/forge/*.sh` 模块，case 分发命令 |
+| `shell/forge/common.sh` | 公共函数：`fetch()`, `link_binary()`, `github_latest()`, `_dw()`, `_pad()`, 注册表加载 |
+| `shell/env.sh` | 运行时环境，配置 PATH、镜像源、symlink 配置、合并 MCP JSON |
+| `ai/versions.lock` | 版本锁定文件，格式：`name|version|date` |
+| `download/update.manifest` | 最新版本缓存，由 `forge update` 写入 |
+
+## Forge 入口
+
+`forge` 是薄脚本，source 所有 `shell/forge/*.sh` 模块后 case 分发：
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+for f in "$ROOT_DIR/shell/forge"/*.sh; do
+    [ -f "$f" ] || continue
+    source "$f"
+done
+case "${1:-}" in
+    -a|--all)       cmd_check "true" ;;
+    download)       shift; cmd_download "$@" ;;
+    init)           cmd_init ;;
+    uninstall|rm)   shift; cmd_uninstall "$@" ;;
+    list|ls)        cmd_list ;;
+    update)         cmd_check "false" ;;
+    new)            shift; cmd_new "$@" ;;
+    pack)           shift; cmd_pack "$@" ;;
+    skills)         shift; cmd_skills "$@" ;;
+    doctor)         cmd_doctor ;;
+    help|--help|-h) show_help ;;
+    "")             cmd_check "false" ;;
+    *)              show_help; exit 1 ;;
+esac
+```
 
 ## Registry Manifest 规范
 
@@ -42,13 +84,12 @@ forgestack/
 ```bash
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: 工具名
 # @repo: GitHub 仓库（owner/repo）
 
 get_latest() {
-    # 返回最新版本号（字符串）
     github_latest "owner/repo"
 }
 
@@ -56,10 +97,7 @@ upgrade() {
     local latest; latest=$(get_latest)
     [ -z "$latest" ] && { err "无法获取最新版本"; exit 1; }
 
-    # 1. 下载并解压到 $TOOLS_DIR/工具名/
     fetch "工具名" "下载URL" "格式(tar.gz|zip|binary)" "strip层级"
-
-    # 2. 创建 symlink 到 $AI_HOME/bin/
     link_binary "$TOOLS_DIR/工具名/可执行文件名"
 }
 ```
@@ -68,32 +106,58 @@ upgrade() {
 
 1. `forge new <工具名>` — 生成 manifest 模板
 2. 编辑 `registry/<工具名>.sh`，实现 `get_latest()` 和 `upgrade()`
-3. `forge install <工具名>` — 安装并验证
+3. `forge download` — 下载到 `download/`
+4. `forge init` — 解压部署到 `ai/tools/` 并链接到 `ai/bin/`
 
-### 常用公共函数
+### 常用公共函数（shell/forge/common.sh）
 
 - `github_latest "owner/repo"` — 从 GitHub API 获取最新 release tag
-- `fetch "名" "URL" "格式" "strip"` — 下载并解压到 `$TOOLS_DIR/名/`
-- `fetch_to "目标文件" "URL"` — 下载单个文件到指定路径
+- `fetch "名" "URL" "格式" "mode"` — 下载并解压到 `$TOOLS_DIR/名/`
+- `fetch_to "目标目录" "URL" "格式" "mode"` — 下载解压到指定目录
 - `link_binary "源路径"` — 创建 symlink 到 `$AI_HOME/bin/`
+- `download_only "名" "URL"` — 只下载不解压到 `download/`
 - `_curl_opts` — 返回 curl 选项（自动处理代理和 GITHUB_TOKEN）
 
 ## Forge CLI 命令
 
 | 命令 | 用途 |
 |------|------|
-| `forge` | 交互式检查并提示更新（类似 brew cu） |
+| `forge` | 检查并提示更新（类似 brew cu） |
 | `forge -a` | 检查并更新全部工具 |
-| `forge install [tool]` | 安装全部或指定工具 |
-| `forge upgrade [tool]` | 更新全部或指定工具 |
+| `forge update` | 仅检查可用更新（缓存到 update.manifest） |
+| `forge download` | 只下载不解压（保存到 download/） |
+| `forge init` | 解压 download/ 并部署到运行环境 |
 | `forge uninstall <tool>` | 卸载指定工具 |
-| `forge list` | 显示所有工具状态 |
-| `forge update` | 仅检查可用更新 |
-| `forge pack` | 打包 tarball（含二进制，用于离线传输） |
-| `forge export` | 导出配置 tarball（不含二进制） |
+| `forge list` | 显示所有注册工具状态（3 列） |
+| `forge pack [file.tgz]` | 打包整站用于内网迁移 |
 | `forge doctor` | 环境健康检查 |
 | `forge new <name>` | 生成新工具 manifest 模板 |
-| `forge skills install/list/remove` | 管理 Agent Skills（从 GitHub sparse checkout） |
+| `forge skills install/list/remove` | 管理 Agent Skills |
+
+### 工作流
+
+```
+forge update     # 检查最新版本，缓存到 download/update.manifest
+forge download   # 下载所有工具到 download/
+forge init       # 解压并部署到 ai/tools/ + ai/bin/
+```
+
+## list 命令显示
+
+3 列对齐显示（CJK 字符宽度感知）：
+
+| 列 | 内容 | 说明 |
+|----|------|------|
+| 工具名称 | registry 中所有工具 | 始终显示 |
+| 当前版本 | 已下载/已安装的版本 | 未下载显示 `-` |
+| 最新版本 | update.manifest 缓存 | 未检查显示 `-` |
+
+对齐使用 `_dw()` 计算显示宽度（CJK=2, ASCII=1），`_pad()` 按显示宽度填充空格。
+
+## 下载清单格式
+
+- `download/download.manifest` — `name|version|filename`（如 `rg|15.1.0|rg-15.1.0-aarch64-apple-darwin.tar.gz`）
+- `download/update.manifest` — `name|version`（如 `ast-grep|0.43.0`，由 `forge update` 写入）
 
 ## 环境变量
 
@@ -104,47 +168,16 @@ upgrade() {
 | `AI_HOME` | 工具安装根目录（默认 `$ROOT/ai`） |
 | `OS` / `ARCH` | 目标平台（默认 linux/amd64） |
 
-## Skills 结构
-
-每个 skill 是 `skills/` 下的一个目录，包含 `SKILL.md`：
-
-```
-skills/
-├── brainstorming/SKILL.md
-├── writing-plans/SKILL.md
-├── executing-plans/SKILL.md
-├── test-driven-development/SKILL.md
-├── systematic-debugging/SKILL.md
-├── requesting-code-review/SKILL.md
-├── receiving-code-review/SKILL.md
-├── verification-before-completion/SKILL.md
-├── dispatching-parallel-agents/SKILL.md
-├── subagent-driven-development/SKILL.md
-├── finishing-a-development-branch/SKILL.md
-├── using-git-worktrees/SKILL.md
-├── frontend-design/SKILL.md
-├── writing-skills/SKILL.md
-└── using-superpowers/SKILL.md
-```
-
-Skills 通过 `forge skills install` 从 GitHub 仓库 sparse checkout 安装，安装后 symlink 到 `~/.claude/skills/`。
-
-## MCP 配置
-
-`mcp/*.json` 文件在 `env.sh` source 时自动合并到 `~/.claude/mcp.json`：
-
-- `context7.json` — 文档查询（Upstash Context7）
-- `filesystem.json` — 文件系统访问（作用域：`$HOME/projects`）
-- `github.json` — GitHub 操作（需配置 personal access token）
-
 ## 开发约定
 
 1. **纯 Bash** — 项目不使用 Python/JS 源码，仅 shell 脚本
 2. **set -euo pipefail** — 所有脚本严格模式
-3. **中文输出** — 用户界面消息使用中文
-4. **离线优先** — 所有工具必须可打包离线部署
-5. **版本锁定** — 安装版本记录在 `ai/versions.lock`，格式 `工具名|版本|日期`
-6. **Symlink 管理** — 工具二进制通过 symlink 链接到 `ai/bin/`，配置文件 symlink 到 `~/`
+3. **macOS bash 3.2 兼容** — 不使用 `declare -A`（关联数组），用 case 语句替代
+4. **中文输出** — 用户界面消息使用中文
+5. **离线优先** — 所有工具必须可打包离线部署
+6. **版本锁定** — 安装版本记录在 `ai/versions.lock`，格式 `name|version|date`
+7. **Symlink 管理** — 工具二进制通过 symlink 链接到 `ai/bin/`，配置文件 symlink 到 `~/`
+8. **函数覆盖** — `forge download` 在子 shell 中覆盖 `fetch()`/`fetch_to()`/`link_binary()` 实现只下载
 
 ## 验证方式
 

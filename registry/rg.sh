@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$_SCRIPT_DIR/../scripts/_common.sh"
+source "$_SCRIPT_DIR/../shell/forge/common.sh"
 
 # @name: rg
 # @repo: BurntSushi/ripgrep
@@ -15,5 +15,11 @@ upgrade() {
     fetch "rg" \
         "https://github.com/BurntSushi/ripgrep/releases/download/${latest}/ripgrep-${latest}-${arch}-unknown-linux-musl.tar.gz" \
         "tar.gz" "strip1"
+    link_binary "$TOOLS_DIR/rg/rg"
+}
+
+install_from() {
+    local file="$1"
+    install_from_file "$file" "rg" "tar.gz" "strip1"
     link_binary "$TOOLS_DIR/rg/rg"
 }
