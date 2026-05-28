@@ -6,7 +6,6 @@ AI_HOME="${AI_HOME:-$_ROOT/ai}"
 TOOLS_DIR="$AI_HOME/tools"
 RUNTIMES_DIR="$AI_HOME/runtimes"
 TMP_DIR="$AI_HOME/tmp/.download"
-mkdir -p "$TOOLS_DIR" "$RUNTIMES_DIR" "$TMP_DIR"
 
 OS="${OS:-linux}"
 ARCH="${ARCH:-amd64}"
@@ -66,31 +65,48 @@ fetch_to() {
     rm -f "$tmp"
 }
 
+# 抑制 macOS LIBARCHIVE xattr 警告（GNU tar 不认识这些头）
+_tar_quiet() { "$@" 2> >(grep -v 'LIBARCHIVE.xattr' >&2); }
+
 _extract() {
     local tmp="$1" dest="$2" format="$3" mode="$4" binary_name="$5"
     case "$format" in
+        tar.xz|txz)
+            case "$mode" in
+                strip1) _tar_quiet tar -xJf "$tmp" -C "$dest" --strip-components=1 || return 1 ;;
+                flat)   _tar_quiet tar -xJf "$tmp" -C "$dest" || return 1 ;;
+                *) _tar_quiet tar -xJf "$tmp" -C "$dest" || return 1 ;;
+            esac
+            ;;
         tar.gz|tgz)
             case "$mode" in
-                strip1) tar -xzf "$tmp" -C "$dest" --strip-components=1 ;;
-                flat)   tar -xzf "$tmp" -C "$dest" ;;
+                strip1) _tar_quiet tar -xzf "$tmp" -C "$dest" --strip-components=1 || return 1 ;;
+                flat)   _tar_quiet tar -xzf "$tmp" -C "$dest" || return 1 ;;
                 flat-binary)
-                    tar -xzf "$tmp" -C "$dest"
+                    _tar_quiet tar -xzf "$tmp" -C "$dest" || return 1
                     local bin
-                    bin=$(find "$dest" -maxdepth 1 -type f -perm +111 -name "${binary_name}" | head -1)
-                    [ -n "$bin" ] && mv "$bin" "$dest/$binary_name" && \
+                    bin=$(find "$dest" -type f -name "$binary_name" | head -1)
+                    if [ -z "$bin" ]; then
+                        bin=$(find "$dest" -type f -name "${binary_name}_*" | head -1)
+                    fi
+                    if [ -n "$bin" ] && [ "$bin" != "$dest/$binary_name" ]; then
+                        mv "$bin" "$dest/$binary_name"
                         find "$dest" -mindepth 1 -maxdepth 1 ! -name "$binary_name" -exec rm -rf {} + 2>/dev/null
-                    chmod +x "$dest/$binary_name"
+                    fi
+                    [ -f "$dest/$binary_name" ] && chmod +x "$dest/$binary_name"
                     ;;
-                *) tar -xzf "$tmp" -C "$dest" ;;
+                *) _tar_quiet tar -xzf "$tmp" -C "$dest" || return 1 ;;
             esac
             ;;
         zip)
-            unzip -q -o "$tmp" -d "$dest"
+            unzip -q -o "$tmp" -d "$dest" || return 1
             if [ "$mode" = "flat-binary" ] && [ -n "$binary_name" ]; then
                 local bin
                 bin=$(find "$dest" -type f -name "$binary_name" | head -1)
-                [ -n "$bin" ] && mv "$bin" "$dest/$binary_name" && \
+                if [ -n "$bin" ] && [ "$bin" != "$dest/$binary_name" ]; then
+                    mv "$bin" "$dest/$binary_name"
                     find "$dest" -mindepth 1 ! -name "$binary_name" -exec rm -rf {} + 2>/dev/null
+                fi
                 chmod +x "$dest/$binary_name"
             fi
             ;;
@@ -141,7 +157,7 @@ install_from_file() {
 # ── Forge CLI 共享函数 ────────────────────────────────────
 
 REGISTRY_DIR="${REGISTRY_DIR:-$_ROOT/registry}"
-LOCK_FILE="${LOCK_FILE:-$_ROOT/ai/versions.lock}"
+LOCK_FILE="${LOCK_FILE:-$_ROOT/versions.lock}"
 
 load_registry() {
     REGISTRY=()
@@ -236,7 +252,7 @@ _pad() {
 }
 
 print_header() {
-    local widths=(16 12 12 10 6)
+    local widths=(20 12 12 10 6)
     echo ""
     local i=0
     for arg in "$@"; do

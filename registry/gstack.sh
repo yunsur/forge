@@ -5,18 +5,6 @@ source "$_SCRIPT_DIR/../shell/forge/common.sh"
 # @name: gstack
 # @repo: garrytan/gstack
 
-# 选中的 skills（仅安装这些，不装全部）
-GSTACK_SKILLS=(
-    # 规划审查
-    office-hours plan-ceo-review plan-eng-review plan-design-review autoplan
-    # QA/测试
-    qa qa-only benchmark benchmark-models
-    # 记忆/知识库
-    context-save context-restore learn setup-gbrain sync-gbrain
-    # 回顾
-    retro
-)
-
 get_latest() {
     # GStack 无 release/tag，使用最新 commit SHA（短）
     # 方式1: GitHub API
@@ -41,15 +29,4 @@ upgrade() {
     rm -rf "$dest"
     git clone --depth 1 --single-branch \
         "https://github.com/garrytan/gstack.git" "$dest" 2>/dev/null
-
-    # 选择性链接 skills（只链接选中的目录）
-    mkdir -p "$HOME/.claude/skills"
-    local linked=0
-    for skill in "${GSTACK_SKILLS[@]}"; do
-        if [ -d "$dest/$skill" ]; then
-            ln -sfn "$dest/$skill" "$HOME/.claude/skills/gstack-${skill}"
-            ((linked++)) || true
-        fi
-    done
-    ok "gstack $latest (${linked}/${#GSTACK_SKILLS[@]} skills)"
 }

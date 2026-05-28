@@ -34,7 +34,7 @@ install_from() {
     local file="$1"
     local dest="$TOOLS_DIR/node"
     mkdir -p "$dest"
-    tar -xzf "$file" -C "$dest" --strip-components=1
+    _tar_quiet tar -xzf "$file" -C "$dest" --strip-components=1 || { err "node 解压失败"; return 1; }
     link_binary "$TOOLS_DIR/node/bin/node"
     link_binary "$TOOLS_DIR/node/bin/npm"
     link_binary "$TOOLS_DIR/node/bin/npx"

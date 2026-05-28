@@ -11,19 +11,20 @@ cmd_list() {
         current=$(get_installed "$name")
         [ -z "$current" ] && current=$(get_downloaded "$name")
         latest=$(get_latest_cached "$name")
+        [ -z "$latest" ] && latest=$(get_downloaded "$name")
 
         if [ -z "$current" ] && [ -z "$latest" ]; then
-            _pad "$name" 16
+            _pad "$name" 20
             _pad "-" 12
             _pad "-" 12
             echo ""
         elif [ -n "$current" ] && [ -n "$latest" ] && [ "$current" != "$latest" ]; then
-            _pad "$name" 16
+            _pad "$name" 20
             _pad "$current" 12
             _pad "${Y}${latest}${NC}" 12
             echo ""
         else
-            _pad "$name" 16
+            _pad "$name" 20
             _pad "${current:--}" 12
             _pad "${latest:--}" 12
             echo ""

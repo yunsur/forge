@@ -30,7 +30,7 @@ install_from() {
     local file="$1"
     local dest="$TOOLS_DIR/openspec"
     mkdir -p "$dest"
-    tar -xzf "$file" -C "$dest"
+    _tar_quiet tar -xzf "$file" -C "$dest" || { err "openspec 解压失败"; return 1; }
     npm install -g "$dest/package" --prefix "$dest" 2>/dev/null
     rm -rf "$dest/package"
     link_binary "$dest/bin/openspec"

@@ -6,7 +6,8 @@
 #   forge                   检查并提示更新（类似 brew cu）
 #   forge -a                检查并更新全部（类似 brew cu -a）
 #   forge download            只下载不解压
-#   forge init              解压并部署到运行环境
+#   forge init              全量初始化
+#   forge init tools|config|skills|mcp|bins  单步初始化
 #   forge list              显示所有工具状态
 #   forge update            仅检查可用更新
 # ─────────────────────────────────────────────────────────
@@ -25,13 +26,14 @@ done
 case "${1:-}" in
     -a|--all)       cmd_check "true" ;;
     download)       shift; cmd_download "$@" ;;
-    init)           cmd_init ;;
+    init)           shift; cmd_init "$@" ;;
     uninstall|rm)   shift; cmd_uninstall "$@" ;;
     list|ls)        cmd_list ;;
     update)         cmd_check "false" ;;
     new)            shift; cmd_new "$@" ;;
     pack)           shift; cmd_pack "$@" ;;
     skills)         shift; cmd_skills "$@" ;;
+    mcp)            shift; cmd_mcp "$@" ;;
     doctor)         cmd_doctor ;;
     help|--help|-h) show_help ;;
     "")             cmd_check "false" ;;

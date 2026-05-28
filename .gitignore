@@ -1,6 +1,7 @@
 # 运行时目录（工具、缓存、临时文件）
 ai/
 download/
+versions.lock
 
 # macOS
 .DS_Store
@@ -13,3 +14,4 @@ download/
 *~
 .claude/
 *.tgz
+*.tgz.md5

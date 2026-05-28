@@ -22,7 +22,7 @@ upgrade() {
     local arch="x86_64-unknown-linux-gnu"
     [ "$ARCH" = "aarch64" ] && arch="aarch64-unknown-linux-gnu"
 
-    fetch "rust" "${RUST_DIST}/rust-${latest}-${arch}.tar.gz" "tar.gz" "flat"
+    fetch "rust" "${RUST_DIST}/rust-${latest}-${arch}.tar.xz" "tar.xz" "flat"
     # 运行 install.sh
     local extracted
     extracted=$(find "$TOOLS_DIR/rust" -maxdepth 1 -type d -name 'rust-*' | head -1)
@@ -41,11 +41,13 @@ install_from() {
     local file="$1"
     local dest="$TOOLS_DIR/rust"
     mkdir -p "$dest"
-    tar -xzf "$file" -C "$TMP_DIR"
+    _tar_quiet tar -xJf "$file" -C "$dest" || { err "rust 解压失败"; return 1; }
     local extracted
-    extracted=$(find "$TMP_DIR" -maxdepth 1 -type d -name 'rust-*' | head -1)
-    [ -n "$extracted" ] && "$extracted/install.sh" --prefix="$dest" --without=rust-docs 2>&1 | tail -3
-    rm -rf "$extracted"
+    extracted=$(find "$dest" -maxdepth 1 -type d -name 'rust-*' | head -1)
+    if [ -n "$extracted" ]; then
+        "$extracted/install.sh" --prefix="$dest" --without=rust-docs 2>&1 | tail -3
+        rm -rf "$extracted"
+    fi
     link_binary "$dest/bin/rustc"
     link_binary "$dest/bin/cargo"
     link_binary "$dest/bin/rustup"

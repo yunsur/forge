@@ -31,7 +31,7 @@ install_from() {
     local file="$1"
     local dest="$TOOLS_DIR/codex"
     mkdir -p "$dest"
-    tar -xzf "$file" -C "$dest"
+    _tar_quiet tar -xzf "$file" -C "$dest" || { err "codex 解压失败"; return 1; }
     chmod +x "$dest"/codex* 2>/dev/null || true
     link_binary "$TOOLS_DIR/codex/codex"
 }

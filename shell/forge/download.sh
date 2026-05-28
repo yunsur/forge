@@ -35,7 +35,28 @@ _fetch_to_for_download() {
         filename="${base}.${i}"
     fi
     curl $(_curl_opts) -fSL -o "$dl_dest/$filename" "$url"
-    echo "${_DOWNLOAD_NAME:-_}|${filename}" >> "$_ROOT/download/download.manifest"
+    local ver="${filename%.tar.gz}"; ver="${ver%.tgz}"; ver="${ver%.tar.xz}"; ver="${ver%.zip}"
+    echo "$(basename "$dest")|${ver}|${filename}" >> "$_ROOT/download/download.manifest"
+}
+
+_git_repo_for() {
+    case "$1" in
+        gstack) echo "garrytan/gstack" ;;
+        superpowers) echo "obra/superpowers" ;;
+    esac
+}
+
+_git_clone_for_download() {
+    local name="$1" repo="$2"
+    local dest="$_ROOT/download/$name"
+    if [ -d "$dest/.git" ]; then
+        _log "更新" "$name (git pull)"
+        git -C "$dest" pull --ff-only 2>/dev/null || true
+    else
+        _log "克隆" "$name → download/$name"
+        rm -rf "$dest"
+        git clone --depth 1 --single-branch "https://github.com/${repo}.git" "$dest" 2>/dev/null
+    fi
 }
 
 cmd_download() {
@@ -59,7 +80,30 @@ cmd_download() {
     echo ""
     local ok=0 fail=0
 
+    # git 工具单独处理（克隆到 download/）
+    local -a archive_targets=()
     for tool in "${targets[@]}"; do
+        local repo
+        repo=$(_git_repo_for "$tool")
+        if [ -n "$repo" ]; then
+            if _git_clone_for_download "$tool" "$repo"; then
+                local git_ver
+                git_ver=$(git ls-remote --tags --sort=-v:refname "https://github.com/${repo}.git" 2>/dev/null \
+                    | head -1 | sed 's|.*refs/tags/||;s/\^{}//')
+                [ -z "$git_ver" ] && git_ver=$(git -C "$_ROOT/download/$tool" rev-parse --short HEAD 2>/dev/null || echo '?')
+                set_installed "$tool" "$git_ver"
+                echo -e "  ${G}✓${NC} ${tool}"
+                ((ok++)) || true
+            else
+                echo -e "  ${R}✗${NC} ${tool} 克隆失败"
+                ((fail++)) || true
+            fi
+        else
+            archive_targets+=("$tool")
+        fi
+    done
+
+    for tool in ${archive_targets[@]+"${archive_targets[@]}"}; do
         local manifest
         manifest=$(find_manifest "$tool")
         if [ -z "$manifest" ]; then

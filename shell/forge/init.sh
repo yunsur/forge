@@ -2,21 +2,35 @@
 # 命令: init — 运行环境初始化
 #
 # 统一原则：所有文件先复制到 ai/，再从 ai/ 软链接到目标位置
+#
+# 子命令:
+#   forge init            全量初始化（解压+配置+skills+mcp+链接）
+#   forge init tools      仅解压工具
+#   forge init config     仅部署配置文件
+#   forge init skills     仅部署 Skills
+#   forge init mcp        仅合并 MCP 配置
+#   forge init bins       仅链接二进制
 
-cmd_init() {
+# ── tools ───────────────────────────────────────────────────
+
+_init_tools() {
     local manifest_file="$ROOT_DIR/download/download.manifest"
     local downloads="$ROOT_DIR/download"
 
-    # ── 0. 工具解压 ──────────────────────────────────────────
+    mkdir -p "$AI_HOME/tools" "$AI_HOME/runtimes"
 
+    # 从 download.manifest 解压
     if [ -f "$manifest_file" ]; then
         _log "init" "解压工具（从 download.manifest）"
 
-        # 读取 manifest，按工具名分组
         declare -A TOOL_FILES
         declare -a TOOL_ORDER
-        while IFS='|' read -r tname tfile; do
+        while IFS='|' read -r tname tver tfile; do
             [ -z "$tname" ] && continue
+            if [ -z "$tfile" ]; then
+                tfile="$tver"
+                tver=""
+            fi
             if [ -z "${TOOL_FILES[$tname]:-}" ]; then
                 TOOL_ORDER+=("$tname")
                 TOOL_FILES[$tname]="$tfile"
@@ -81,59 +95,33 @@ cmd_init() {
         fi
     fi
 
-    # 处理 git clone 工具（gstack、superpowers）
+    # git 工具（gstack、superpowers）
     for git_tool in gstack superpowers; do
         if [ ! -d "$AI_HOME/tools/$git_tool" ]; then
-            local mfile=""
-            for m in "$REGISTRY_DIR"/*.sh; do
-                [ -f "$m" ] || continue
-                if grep -q "^# @name: $git_tool$" "$m" 2>/dev/null; then
-                    mfile="$m"
-                    break
-                fi
-            done
-            if [ -n "$mfile" ]; then
-                _log "init" "克隆 $git_tool"
-                if (
-                    source "$mfile"
-                    type upgrade &>/dev/null && upgrade
-                ); then
-                    ok "$git_tool"
-                else
-                    warn "$git_tool 克隆失败（需要网络）"
-                fi
+            local src="$downloads/$git_tool"
+            if [ -d "$src" ]; then
+                cp -r "$src" "$AI_HOME/tools/$git_tool"
+                ok "$git_tool (from download/)"
+            else
+                warn "$git_tool 未在 download/ 中找到，跳过"
             fi
         fi
     done
+}
 
-    # ── 1. 基础目录 ──────────────────────────────────────────
+# ── dirs ────────────────────────────────────────────────────
 
+_init_dirs() {
     _log "init" "创建基础目录"
     mkdir -p "$AI_HOME/bin" "$AI_HOME/tools" "$AI_HOME/runtimes" "$AI_HOME/tmp"
-    mkdir -p "$HOME/.claude/skills" "$HOME/.codex"
+    mkdir -p "$HOME/.claude/skills"
     ok "ai/ 和 ~/ 目录就绪"
+}
 
-    # ── 2. 配置文件部署 ──────────────────────────────────────
+# ── config ──────────────────────────────────────────────────
 
+_init_config() {
     _log "init" "部署配置文件"
-
-    if [ -d "$ROOT_DIR/config/claude" ]; then
-        mkdir -p "$AI_HOME/config/claude"
-        cp -r "$ROOT_DIR/config/claude/"* "$AI_HOME/config/claude/" 2>/dev/null || true
-        for f in "$AI_HOME/config/claude"/*; do
-            [ -f "$f" ] && ln -sfn "$f" "$HOME/.claude/$(basename "$f")"
-        done
-        ok "claude 配置 → ~/.claude/"
-    fi
-
-    if [ -d "$ROOT_DIR/config/codex" ]; then
-        mkdir -p "$AI_HOME/config/codex"
-        cp -r "$ROOT_DIR/config/codex/"* "$AI_HOME/config/codex/" 2>/dev/null || true
-        for f in "$AI_HOME/config/codex"/*; do
-            [ -f "$f" ] && ln -sfn "$f" "$HOME/.codex/$(basename "$f")"
-        done
-        ok "codex 配置 → ~/.codex/"
-    fi
 
     if [ -d "$ROOT_DIR/config/openspec" ]; then
         mkdir -p "$AI_HOME/config/openspec" "$HOME/.config/openspec"
@@ -144,27 +132,55 @@ cmd_init() {
         ok "openspec 配置 → ~/.config/openspec/"
     fi
 
-    # ── 3. Skills 部署 ───────────────────────────────────────
+    if [ -d "$ROOT_DIR/config/claude" ]; then
+        mkdir -p "$AI_HOME/config/claude" "$HOME/.claude/agents"
+        cp -r "$ROOT_DIR/config/claude/"* "$AI_HOME/config/claude/" 2>/dev/null || true
+        [ -f "$AI_HOME/config/claude/CLAUDE.md" ] && \
+            ln -sfn "$AI_HOME/config/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+        for f in "$AI_HOME/config/claude/agents"/*.md; do
+            [ -f "$f" ] && ln -sfn "$f" "$HOME/.claude/agents/$(basename "$f")"
+        done
+        ok "claude 配置 → ~/.claude/ (软链接)"
+    fi
+}
+
+# ── skills ──────────────────────────────────────────────────
+
+_init_skills() {
+    local downloads="$ROOT_DIR/download"
 
     _log "init" "部署 Skills"
 
+    # 先清理目标目录，避免残留旧 skills
+    if [ -d "$HOME/.claude/skills" ]; then
+        rm -rf "$HOME/.claude/skills"
+        _log "init" "已清理 ~/.claude/skills"
+    fi
+
+    mkdir -p "$AI_HOME/skills" "$HOME/.claude/skills"
+
+    # 独立 skills（download/skills/，非 superpowers/gstack）
     local skill_count=0
-    if [ -d "$ROOT_DIR/skills" ]; then
-        mkdir -p "$AI_HOME/skills"
-        for d in "$ROOT_DIR/skills"/*/; do
+    if [ -d "$downloads/skills" ]; then
+        for d in "$downloads/skills"/*/; do
             [ -d "$d" ] || continue
             local sname=$(basename "$d")
             cp -r "$d" "$AI_HOME/skills/$sname"
             ln -sfn "$AI_HOME/skills/$sname" "$HOME/.claude/skills/$sname"
             ((skill_count++)) || true
         done
-        ok "项目 skills: ${skill_count} 个"
+        [ $skill_count -gt 0 ] && ok "独立 skills: ${skill_count} 个"
     fi
 
     local SUPERPOWERS_SKILLS=(
-        requesting-code-review receiving-code-review
+        # 测试驱动开发
         test-driven-development
-        verification-before-completion systematic-debugging
+        # 系统化调试
+        systematic-debugging
+        # 完成前验证
+        verification-before-completion
+        # 工程代码审查
+        requesting-code-review
     )
     if [ -d "$AI_HOME/tools/superpowers/skills" ]; then
         local sp_count=0
@@ -178,10 +194,14 @@ cmd_init() {
     fi
 
     local GSTACK_SKILLS=(
-        office-hours plan-ceo-review plan-eng-review plan-design-review autoplan
-        qa qa-only benchmark benchmark-models
-        context-save context-restore learn setup-gbrain sync-gbrain
-        retro
+        # 需求/方案挑战
+        office-hours
+        # 设计评审
+        review
+        # 问题调查
+        investigate
+        # QA/验收
+        qa-only
     )
     if [ -d "$AI_HOME/tools/gstack" ]; then
         local gs_count=0
@@ -193,15 +213,20 @@ cmd_init() {
         done
         ok "gstack skills: ${gs_count}/${#GSTACK_SKILLS[@]} 个"
     fi
+}
 
-    # ── 4. MCP 配置合并 ──────────────────────────────────────
+# ── mcp ─────────────────────────────────────────────────────
 
+_init_mcp() {
     _log "init" "部署 MCP 配置"
 
-    if [ -d "$ROOT_DIR/mcp" ]; then
-        mkdir -p "$AI_HOME/mcp"
-        cp -r "$ROOT_DIR/mcp/"* "$AI_HOME/mcp/" 2>/dev/null || true
+    mkdir -p "$AI_HOME/mcp"
 
+    if [ -f "$ROOT_DIR/config/claude/mcp.json" ]; then
+        cp "$ROOT_DIR/config/claude/mcp.json" "$AI_HOME/mcp/claude.json" 2>/dev/null || true
+    fi
+
+    if [ "$(ls -A "$AI_HOME/mcp/"*.json 2>/dev/null)" ]; then
         if command -v python3 &>/dev/null; then
             python3 -c "
 import json,os,glob
@@ -216,8 +241,12 @@ print(f'  mcp servers: {len(base[\"mcpServers\"])} 个')
             warn "python3 不可用，跳过 MCP 合并"
         fi
     fi
+}
 
-    # ── 5. 工具二进制链接 ────────────────────────────────────
+# ── bins ────────────────────────────────────────────────────
+
+_init_bins() {
+    mkdir -p "$AI_HOME/bin"
 
     _log "init" "链接工具二进制"
 
@@ -282,8 +311,7 @@ print(f'  mcp servers: {len(base[\"mcpServers\"])} 个')
 
     ok "新链接: ${linked} 个二进制 → ai/bin/"
 
-    # ── 6. 自定义脚本 bin/ ───────────────────────────────────
-
+    # 自定义脚本
     if [ -d "$ROOT_DIR/bin" ]; then
         local custom=0
         for f in "$ROOT_DIR/bin"/*; do
@@ -296,16 +324,39 @@ print(f'  mcp servers: {len(base[\"mcpServers\"])} 个')
         done
         [ $custom -gt 0 ] && ok "自定义脚本: ${custom} 个"
     fi
+}
 
-    # ── 7. 完成提示 ──────────────────────────────────────────
+# ── 主入口 ──────────────────────────────────────────────────
 
-    echo ""
-    echo -e "${G}${BOLD}初始化完成！${NC}"
-    echo ""
-    echo -e "  加载环境:  ${B}source env.sh${NC}"
-    echo -e "  检查环境:  ${B}forge doctor${NC}"
-    echo ""
-    echo -e "  ${D}提示: 将以下内容添加到 ~/.bashrc 或 ~/.zshrc:${NC}"
-    echo -e "  ${D}source ${ROOT_DIR}/env.sh${NC}"
-    echo ""
+cmd_init() {
+    case "${1:-}" in
+        tools)          _init_tools ;;
+        config)         _init_config ;;
+        skills)         _init_skills ;;
+        mcp)            _init_mcp ;;
+        bins)           _init_bins ;;
+        "")
+            _init_tools
+            _init_dirs
+            _init_config
+            _init_skills
+            _init_mcp
+            _init_bins
+
+            echo ""
+            echo -e "${G}${BOLD}初始化完成！${NC}"
+            echo ""
+            echo -e "  加载环境:  ${B}source env.sh${NC}"
+            echo -e "  检查环境:  ${B}forge doctor${NC}"
+            echo ""
+            echo -e "  ${D}提示: 将以下内容添加到 ~/.bashrc 或 ~/.zshrc:${NC}"
+            echo -e "  ${D}source ${ROOT_DIR}/env.sh${NC}"
+            echo ""
+            ;;
+        *)
+            err "未知子命令: forge init $1"
+            echo "用法: forge init [tools|config|skills|mcp|bins]"
+            return 1
+            ;;
+    esac
 }

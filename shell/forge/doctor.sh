@@ -51,7 +51,7 @@ cmd_doctor() {
 
     # 3. 检查目录结构
     echo -e "\n${B}[目录]${NC}"
-    local dirs=("$AI_HOME/bin" "$AI_HOME/tools" "$AI_HOME/runtimes" "$_ROOT/config" "$_ROOT/skills" "$_ROOT/mcp" "$_ROOT/shell" "$_ROOT/bin")
+    local dirs=("$AI_HOME/bin" "$AI_HOME/tools" "$AI_HOME/runtimes" "$_ROOT/config" "$_ROOT/mcp" "$_ROOT/shell" "$_ROOT/bin")
     for d in "${dirs[@]}"; do
         if [ -d "$d" ]; then
             local count
