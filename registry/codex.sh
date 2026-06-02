@@ -19,7 +19,8 @@ upgrade() {
     [ -z "$latest" ] && { err "无法获取最新版本"; exit 1; }
     local arch="x86_64"
     [ "$ARCH" = "aarch64" ] && arch="aarch64"
-    local tag="rust-${latest}"
+    local tag="rust-v${latest}"
+
     fetch "codex" \
         "https://github.com/openai/codex/releases/download/${tag}/codex-${arch}-unknown-linux-musl.tar.gz" \
         "tar.gz" "flat"

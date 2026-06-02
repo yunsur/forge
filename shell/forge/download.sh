@@ -15,7 +15,7 @@ _fetch_for_download() {
         filename="${base}.${i}"
     fi
     _log "下载" "$name → $filename"
-    curl $(_curl_opts) -fSL -o "$dest/$filename" "$url"
+    curl $(_curl_download_opts) -o "$dest/$filename" "$url"
     # 更新 install manifest（name|version|filename，去除旧条目）
     local mf="$_ROOT/download/download.manifest"
     [ -f "$mf" ] && sed -i.bak "/^${name}|/d" "$mf" && rm -f "$mf.bak"
@@ -34,7 +34,7 @@ _fetch_to_for_download() {
         while [ -f "$dl_dest/${base}.${i}" ]; do ((i++)); done
         filename="${base}.${i}"
     fi
-    curl $(_curl_opts) -fSL -o "$dl_dest/$filename" "$url"
+    curl $(_curl_download_opts) -o "$dl_dest/$filename" "$url"
     local ver="${filename%.tar.gz}"; ver="${ver%.tgz}"; ver="${ver%.tar.xz}"; ver="${ver%.zip}"
     echo "$(basename "$dest")|${ver}|${filename}" >> "$_ROOT/download/download.manifest"
 }

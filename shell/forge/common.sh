@@ -19,12 +19,24 @@ ok()    { echo -e "  ${G}✓${NC} $1"; }
 warn()  { echo -e "  ${Y}!${NC} $1" >&2; }
 err()   { echo -e "  ${R}✗${NC} $1" >&2; }
 
-# curl 选项（支持代理和 token）
-_curl_opts() {
-    local opts=(-fsSL --connect-timeout 10 --max-time 30)
+# curl 通用选项（代理和 token）
+_curl_base_opts() {
+    local opts=(--connect-timeout 10 --retry 3 --retry-delay 2)
     [ -n "${https_proxy:-${HTTPS_PROXY:-}}" ] && opts+=(--proxy "${https_proxy:-$HTTPS_PROXY}")
     [ -n "${http_proxy:-${HTTP_PROXY:-}}" ] && opts+=(--proxy "${http_proxy:-$HTTP_PROXY}")
     [ -n "${GITHUB_TOKEN:-}" ] && opts+=(-H "Authorization: Bearer $GITHUB_TOKEN")
+    echo "${opts[@]}"
+}
+
+# API 请求用（短超时）
+_curl_opts() {
+    local opts=(-fsSL --max-time 30 $(_curl_base_opts))
+    echo "${opts[@]}"
+}
+
+# 文件下载用（无 max-time 限制）
+_curl_download_opts() {
+    local opts=(-fSL --retry-max-time 0 $(_curl_base_opts))
     echo "${opts[@]}"
 }
 
@@ -49,7 +61,7 @@ fetch() {
     _log "下载" "$name"
     local dest="$TOOLS_DIR/$name" tmp="$TMP_DIR/$name"
     mkdir -p "$dest"
-    curl -fSL -o "$tmp" "$url"
+    curl $(_curl_download_opts) -o "$tmp" "$url"
     _extract "$tmp" "$dest" "$format" "$mode" "$binary_name"
     rm -f "$tmp"
     ok "$name"
@@ -60,7 +72,7 @@ fetch_to() {
     local dest="$1" url="$2" format="$3" mode="${4:-}" binary_name="${5:-}"
     mkdir -p "$dest"
     local tmp="$TMP_DIR/_fetch_$$"
-    curl -fSL -o "$tmp" "$url"
+    curl $(_curl_download_opts) -o "$tmp" "$url"
     _extract "$tmp" "$dest" "$format" "$mode" "$binary_name"
     rm -f "$tmp"
 }
@@ -142,7 +154,7 @@ download_only() {
     local dest="$_ROOT/download"
     mkdir -p "$dest"
     _log "下载" "$name → $filename"
-    curl $(_curl_opts) -fSL -o "$dest/$filename" "$url"
+    curl $(_curl_download_opts) -o "$dest/$filename" "$url"
     ok "$name"
 }
 

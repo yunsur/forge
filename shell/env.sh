@@ -29,7 +29,6 @@ fi
 if command -v go &>/dev/null; then
     export GOPATH="$AI_HOME/cache/go"
     export GOPROXY="https://goproxy.cn,direct"
-    mkdir -p "$GOPATH"
 fi
 
 # ── Rust ─────────────────────────────────────────────────
@@ -38,7 +37,8 @@ if command -v cargo &>/dev/null; then
     export RUSTUP_HOME="$AI_HOME/cache/rustup"
     export RUSTUP_DIST_SERVER="https://rsproxy.cn"
     export RUSTUP_UPDATE_ROOT="https://rsproxy.cn/rustup"
-    export RUSTUP_REGISTRY_DEFAULT="rsproxy-sparse"
+    export CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
+    export CARGO_REGISTRIES_CRATES_IO_INDEX="sparse+http://172.21.3.13:8081/repository/cargo_group/"
     [ -d "$CARGO_HOME/bin" ] && PATH="$CARGO_HOME/bin:$PATH"
 fi
 
@@ -70,10 +70,10 @@ export OPENSPEC_TELEMETRY=0
 export DO_NOT_TRACK=1
 
 # ── 内网源（按实际地址覆盖上面的默认值）────────────────
-# export PIP_INDEX_URL="https://your-internal-pypi/simple"
-# export PIP_TRUSTED_HOST="your-internal-pypi"
-# export NPM_CONFIG_REGISTRY="https://your-internal-npm"
-# export GOPROXY="https://your-internal-goproxy,direct"
+# export PIP_INDEX_URL="http://172.21.3.9:8081/repository/PyPI_group/simple"
+# export PIP_TRUSTED_HOST="172.21.3.9"
+# export NPM_CONFIG_REGISTRY="http://172.21.3.9:8081/repository/npm_group"
+# export GOPROXY="http://172.21.3.9:8081/repository/golang_group,direct"
 
 # ── git + delta ──────────────────────────────────────────
 if command -v delta &>/dev/null; then

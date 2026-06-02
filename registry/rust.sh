@@ -22,14 +22,7 @@ upgrade() {
     local arch="x86_64-unknown-linux-gnu"
     [ "$ARCH" = "aarch64" ] && arch="aarch64-unknown-linux-gnu"
 
-    fetch "rust" "${RUST_DIST}/rust-${latest}-${arch}.tar.xz" "tar.xz" "flat"
-    # 运行 install.sh
-    local extracted
-    extracted=$(find "$TOOLS_DIR/rust" -maxdepth 1 -type d -name 'rust-*' | head -1)
-    if [ -n "$extracted" ]; then
-        "$extracted/install.sh" --prefix="$TOOLS_DIR/rust" --without=rust-docs 2>&1 | tail -3
-        rm -rf "$extracted"
-    fi
+    fetch "rust" "${RUST_DIST}/rust-${latest}-${arch}.tar.xz" "tar.xz" "strip1"
     link_binary "$TOOLS_DIR/rust/bin/rustc"
     link_binary "$TOOLS_DIR/rust/bin/cargo"
     link_binary "$TOOLS_DIR/rust/bin/rustup"
@@ -39,18 +32,10 @@ upgrade() {
 
 install_from() {
     local file="$1"
-    local dest="$TOOLS_DIR/rust"
-    mkdir -p "$dest"
-    _tar_quiet tar -xJf "$file" -C "$dest" || { err "rust 解压失败"; return 1; }
-    local extracted
-    extracted=$(find "$dest" -maxdepth 1 -type d -name 'rust-*' | head -1)
-    if [ -n "$extracted" ]; then
-        "$extracted/install.sh" --prefix="$dest" --without=rust-docs 2>&1 | tail -3
-        rm -rf "$extracted"
-    fi
-    link_binary "$dest/bin/rustc"
-    link_binary "$dest/bin/cargo"
-    link_binary "$dest/bin/rustup"
-    link_binary "$dest/bin/rustfmt"
-    link_binary "$dest/bin/cargo-clippy" "cargo-clippy"
+    install_from_file "$file" "rust" "tar.xz" "strip1"
+    link_binary "$TOOLS_DIR/rust/bin/rustc"
+    link_binary "$TOOLS_DIR/rust/bin/cargo"
+    link_binary "$TOOLS_DIR/rust/bin/rustup"
+    link_binary "$TOOLS_DIR/rust/bin/rustfmt"
+    link_binary "$TOOLS_DIR/rust/bin/cargo-clippy" "cargo-clippy"
 }

@@ -5,13 +5,19 @@
 ## 快速开始
 
 ```bash
-# 1. 安装所有工具
-./forge install
+# 1. 检查可用更新
+./forge update
 
-# 2. 加载环境
-source env.sh
+# 2. 下载工具包（仅下载）
+./forge download
 
-# 3. 检查环境
+# 3. 初始化运行环境（解压+配置+skills+mcp+链接）
+./forge init
+
+# 4. 加载环境
+source shell/env.sh
+
+# 5. 检查环境
 ./forge doctor
 ```
 
@@ -19,40 +25,42 @@ source env.sh
 
 ```
 forge/
-├── forge              # CLI 工具（安装/更新/打包）
-├── env.sh             # 环境变量（source 加载）
-├── registry/          # 工具清单（每个工具一个 .sh）
-├── scripts/           # 公共函数库
-├── config/            # 配置文件（提交到 git）
-│   ├── claude/        #   → ~/.claude/
-│   └── codex/         #   → ~/.codex/
-├── skills/            # Agent Skills（提交到 git）
-├── mcp/               # MCP Server 配置（提交到 git）
-├── shell/             # 别名和函数（提交到 git）
-├── bin/               # 自定义脚本（提交到 git）
-└── ai/                # 运行时（gitignore）
-    ├── bin/           #   工具符号链接
-    ├── tools/         #   工具安装目录
-    ├── runtimes/      #   运行时（pyenv, python）
-    └── cache/         #   缓存（pip, cargo, npm）
+├── forge                # CLI 入口
+├── shell/
+│   ├── env.sh           # 环境变量（source 加载）
+│   └── forge/*.sh       # 命令模块
+├── registry/            # 工具清单（每个工具一个 .sh）
+├── config/
+│   ├── claude/          # CLAUDE/agents/mcp 配置
+│   └── openspec/        # OpenSpec schema 配置
+├── download/            # 下载缓存与 manifest
+├── versions.lock        # 已安装版本记录
+└── ai/                  # 运行时（gitignore）
+    ├── bin/             # 工具符号链接
+    ├── tools/           # 工具安装目录
+    ├── runtimes/        # 运行时（pyenv, python）
+    ├── mcp/             # 合并 MCP 暂存
+    └── cache/           # 缓存（pip, cargo, npm）
 ```
 
 ## forge 命令
 
 | 命令 | 说明 |
 |------|------|
-| `forge install` | 安装所有未安装的工具 |
-| `forge install <tool>` | 安装指定工具 |
-| `forge upgrade` | 更新全部已安装工具 |
-| `forge upgrade <tool>` | 更新指定工具 |
+| `forge` | 检查并提示更新 |
+| `forge -a` | 检查并更新全部 |
 | `forge list` | 显示工具状态 |
+| `forge update` | 仅检查可用更新 |
+| `forge download [tool...]` | 下载工具到 `download/`（不解压） |
+| `forge init [tools|config|skills|mcp|bins]` | 初始化运行环境 |
 | `forge uninstall <tool>` | 卸载工具 |
 | `forge skills install <owner/repo/skill>` | 下载 skill |
 | `forge skills install <owner/repo>` | 下载整个 skill 仓库 |
 | `forge skills list` | 显示已安装 skills |
+| `forge mcp install` | 安装 MCP server 包 |
+| `forge mcp list` | 显示 MCP server 配置 |
 | `forge doctor` | 环境检查 |
 | `forge pack [file.tgz]` | 打包整站（含二进制）用于内网迁移 |
-| `forge export [file.tgz]` | 导出配置（不含二进制）用于跨机器同步 |
 | `forge new <name>` | 生成新工具的 manifest 模板 |
 
 ## 工具清单
@@ -83,7 +91,7 @@ forge/
 
 ## 代理配置
 
-编辑 `env.sh` 取消注释对应的代理行：
+编辑 `shell/env.sh` 取消注释对应的代理行：
 
 ```bash
 export HTTP_PROXY="http://127.0.0.1:7890"
@@ -104,8 +112,6 @@ export HTTPS_PROXY="http://127.0.0.1:7890"
 ```bash
 # 有网机器：打包
 ./forge pack              # 含二进制（~500MB）
-# 或
-./forge export            # 仅配置（~几KB）
 
 # 传输到内网
 scp forge-*.tgz target:~/
@@ -113,36 +119,41 @@ scp forge-*.tgz target:~/
 # 内网机器：解压
 tar xzf forge-*.tgz
 cd forge
-source env.sh
-# 如果用 export：./forge install（需要内网有镜像源）
+source shell/env.sh
 ```
 
 ## AI 开发工具选择安装
 
 GStack、Superpowers 采用**选择安装**策略，只安装需要的 skills：
 
-### GStack（12 skills）
+### GStack（4 skills）
 
 | 类别 | Skills |
-|------|--------|
-| 规划审查 | office-hours, plan-ceo-review, plan-eng-review, plan-design-review, autoplan |
-| QA/测试 | qa, qa-only, benchmark, benchmark-models |
-| 记忆/知识库 | context-save, context-restore, learn, setup-gbrain, sync-gbrain |
+| --- | --- |
+| 需求/方案挑战 | office-hours |
+| 设计评审 | review |
+| 问题调查 | investigate |
+| QA/验收 | qa-only |
 
 ```bash
-forge install gstack    # 自动链接选中的 skills 到 ~/.claude/skills/gstack-*
+forge download gstack
+forge init tools
+forge init skills       # 自动链接到 ~/.claude/skills/gstack-*
 ```
 
-### Superpowers（5 skills）
+### Superpowers（4 skills）
 
 | 类别 | Skills |
 |------|--------|
-| Code review | requesting-code-review, receiving-code-review |
-| Testing | test-driven-development |
-| Safety | verification-before-completion, systematic-debugging |
+| 测试驱动开发 | test-driven-development |
+| 系统化调试 | systematic-debugging |
+| 完成前验证 | verification-before-completion |
+| 工程代码审查 | requesting-code-review |
 
 ```bash
-forge install superpowers    # 自动链接选中的 skills 到 ~/.claude/skills/sp-*
+forge download superpowers
+forge init tools
+forge init skills            # 自动链接到 ~/.claude/skills/sp-*
 ```
 
 ### OpenSpec（精简工作流）
@@ -153,8 +164,10 @@ forge install superpowers    # 自动链接选中的 skills 到 ~/.claude/skills
 - `tasks` — 任务清单
 
 ```bash
-forge install openspec
-# 离线使用：OPENSPEC_TELEMETRY=0 已在 env.sh 中配置
+forge download openspec
+forge init tools
+forge init config
+# 离线使用：OPENSPEC_TELEMETRY=0 已在 shell/env.sh 中配置
 ```
 
 ## 团队协作
@@ -182,7 +195,8 @@ forge install openspec
 
 ```bash
 # 1. 安装工具
-./forge install && source env.sh
+./forge update && ./forge download && ./forge init
+source shell/env.sh
 
 # 2. 初始化 GBrain
 bash scripts/gbrain-server.sh init
@@ -212,7 +226,7 @@ crontab -e
 
 ```bash
 # 1. 解压工具包
-tar xzf forge-*.tgz && cd forge && source env.sh
+tar xzf forge-*.tgz && cd forge && source shell/env.sh
 
 # 2. 连接 GBrain 服务器
 GBRAIN_SERVER=http://<服务器IP>:3131 source scripts/team-setup.sh gbrain
@@ -267,20 +281,13 @@ forge skills install obra/superpowers
 
 ## MCP 配置
 
-MCP Server 配置放在 `mcp/` 目录，`source env.sh` 自动合并到 `~/.claude/mcp.json`。
+MCP Server 配置在 `config/claude/mcp.json`，通过 `forge init mcp` 合并到 `~/.claude/mcp.json`。
 
 ```bash
-# 添加新的 MCP server
-cat > mcp/my-server.json << 'EOF'
-{
-  "mcpServers": {
-    "my-server": {
-      "command": "npx",
-      "args": ["-y", "my-mcp-server"],
-      "env": {}
-    }
-  }
-}
-EOF
-source env.sh  # 自动合并
+# 编辑仓库内 MCP 配置
+$EDITOR config/claude/mcp.json
+
+# 合并到 ~/.claude/mcp.json
+forge init mcp
+forge mcp list
 ```

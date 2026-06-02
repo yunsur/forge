@@ -14,7 +14,6 @@ stages:
     description: 明确要不要做、做什么、不做什么
     artifact: proposal
     required_roles:
-      - product
       - tester
     optional_skills:
       - gstack:office-hours
@@ -56,9 +55,8 @@ stages:
       - frontend
       - tester
     optional_skills:
-      - superpowers:tdd
-      - superpowers:testing
-      - superpowers:code-review
+      - superpowers:test-driven-development
+      - superpowers:requesting-code-review
     exit_criteria:
       - tasks_are_atomic
       - tasks_have_acceptance_checks
@@ -69,7 +67,7 @@ artifacts:
   - name: proposal
     description: 需求提案
     path: docs/forge/{change_id}/proposal.md
-    owner: product
+    owner: tester
     reviewers:
       - tester
     sections:
@@ -126,17 +124,9 @@ artifacts:
       - migration_tasks
       - observability_tasks
       - release_checks
+      - verification_log
 
 roles:
-  product:
-    responsibility:
-      - clarify_requirements
-      - define_scope
-      - reject_vague_goals
-      - define_acceptance_criteria
-    active_on:
-      - proposal
-
   architect:
     responsibility:
       - review_architecture
@@ -207,10 +197,10 @@ skills:
 
   superpowers:
     default:
-      - tdd
-      - debugging
-      - testing
-      - code-review
+      - test-driven-development
+      - systematic-debugging
+      - verification-before-completion
+      - requesting-code-review
     optional:
       - brainstorming
 
@@ -222,11 +212,11 @@ rules:
   - skills_must_be_invoked_on_demand
   - brainstorming_must_not_run_in_tasks_stage
   - implementation_must_not_start_before_design_approved
+  - verification_results_must_be_logged_in_tasks
 
 gates:
   proposal:
     required_approval:
-      - product
       - tester
 
   design:
@@ -248,7 +238,6 @@ commands:
   proposal:
     description: 创建或更新 proposal
     invokes:
-      - roles:product
       - roles:tester
       - gstack:office-hours
 
@@ -269,21 +258,20 @@ commands:
       - roles:backend
       - roles:frontend
       - roles:tester
-      - superpowers:tdd
-      - superpowers:testing
+      - superpowers:test-driven-development
 
   investigate:
     description: 排查实现、测试或线上问题
     invokes:
       - gstack:investigate
-      - superpowers:debugging
+      - superpowers:systematic-debugging
 
   verify:
     description: 合并前验收
     invokes:
       - gstack:qa-only
-      - superpowers:code-review
-      - superpowers:testing
+      - superpowers:requesting-code-review
+      - superpowers:verification-before-completion
 
 status:
   allowed:

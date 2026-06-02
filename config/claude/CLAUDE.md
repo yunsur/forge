@@ -76,10 +76,10 @@ Default gstack skills:
 
 Default superpowers skills:
 
-- tdd
-- debugging
-- testing
-- code-review
+- test-driven-development
+- systematic-debugging
+- verification-before-completion
+- requesting-code-review
 
 Optional skill:
 
@@ -87,7 +87,7 @@ Optional skill:
 
 Do not use brainstorming during tasks or implementation unless explicitly requested.
 
-If a listed skill is not available, skip it silently and proceed without it. Do not block work because a skill is missing. Apply the skill's intent manually if possible (e.g., if tdd skill is unavailable, still follow TDD discipline yourself).
+If a listed skill is not available, skip it silently and proceed without it. Do not block work because a skill is missing. Apply the skill's intent manually if possible (e.g., if test-driven-development is unavailable, still follow TDD discipline yourself).
 
 ## Role Behavior
 
