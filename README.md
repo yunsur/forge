@@ -14,7 +14,7 @@
 # 3. 安装环境无关工具（解压+链接，无需运行时）
 ./forge install
 
-# 4. 初始化环境依赖工具+配置（pyenv、python、openspec、speckit）
+# 4. 初始化环境依赖工具+配置（pyenv、python、speckit）
 ./forge init
 
 # 5. 加载环境
@@ -31,17 +31,27 @@ forge/
 ├── forge                # CLI 入口
 ├── shell/
 │   ├── env.sh           # 环境变量（source 加载）
+│   ├── deploy.sh        # 部署脚本（比赛时填写）
 │   └── forge/*.sh       # 命令模块
 ├── registry/            # 工具清单（每个工具一个 .sh）
+├── rules/common/        # 通用规则（编码、Git、测试、安全）
 ├── config/
-│   ├── claude/          # CLAUDE/agents/mcp 配置
-│   └── openspec/        # OpenSpec schema 配置
+│   ├── claude/
+│   │   ├── CLAUDE.md    # Claude Code 全局指令
+│   │   ├── agents/      # Agent 角色定义
+│   │   ├── commands/    # Slash commands（/commit, /deploy 等）
+│   │   ├── skills/      # 内置 Skills
+│   │   └── mcp.json     # MCP 服务器配置
+│   └── project/
+│       └── tech-stack.md # 技术栈（比赛时填写）
 ├── download/            # 下载缓存与 manifest
 ├── versions.lock        # 已安装版本记录
 └── ai/                  # 运行时（gitignore）
-    ├── bin/             # 工具符号链接
+    ├── bin/             # 工具符号链接 + deploy.sh
     ├── tools/           # 工具安装目录
     ├── runtimes/        # 运行时（pyenv, python）
+    ├── rules/           # 部署后的规则
+    ├── config/          # 部署后的配置
     ├── mcp/             # 合并 MCP 暂存
     └── cache/           # 缓存（pip, cargo, npm）
 ```
@@ -56,16 +66,36 @@ forge/
 | `forge update` | 仅检查可用更新 |
 | `forge download [tool...]` | 下载工具到 `download/`（不解压） |
 | `forge install [tool...]` | 安装环境无关工具（解压+链接，无需运行时） |
-| `forge init [tools|config|skills|mcp|bins]` | 初始化环境依赖工具+配置 |
+| `forge init [tools\|config\|rules\|skills\|mcp\|bins]` | 初始化环境依赖工具+配置 |
 | `forge uninstall <tool>` | 卸载工具 |
 | `forge skills install <owner/repo/skill>` | 下载 skill |
-| `forge skills install <owner/repo>` | 下载整个 skill 仓库 |
 | `forge skills list` | 显示已安装 skills |
 | `forge mcp install` | 安装 MCP server 包 |
 | `forge mcp list` | 显示 MCP server 配置 |
 | `forge doctor` | 环境检查 |
 | `forge pack [file.tgz]` | 打包整站（含二进制）用于内网迁移 |
 | `forge new <name>` | 生成新工具的 manifest 模板 |
+
+## Claude Slash Commands
+
+`forge init` 后自动部署到 `~/.claude/commands/`：
+
+| 命令 | 说明 |
+|------|------|
+| `/commit "feat(auth): add login"` | 一键提交（lint + test + commit） |
+| `/deploy prod user@server:/app` | 一键部署 |
+| `/security-scan` | 一键安全扫描 |
+
+## Rules
+
+通用规则，`forge init rules` 后部署到 `ai/rules/`：
+
+| 文件 | 内容 |
+|------|------|
+| `coding-style.md` | 编码规范（命名、结构、注释、错误处理） |
+| `git-workflow.md` | Git 工作流（分支、提交格式、PR 规范） |
+| `testing.md` | 测试要求（TDD、覆盖率、测试组织） |
+| `security.md` | 安全基线（输入校验、认证、依赖审计） |
 
 ## 工具清单
 
@@ -91,19 +121,17 @@ forge/
 | cc-switch-cli | Claude Code 配置切换 |
 | codex | OpenAI Codex CLI |
 | starship | 跨 shell 提示符 |
-| bun | JavaScript 运行时（GStack 依赖） |
+| bun | JavaScript 运行时 |
 | pyenv | Python 版本管理（源码脚本） |
 | jetbrains-mono-nf | JetBrains Mono Nerd Font |
-| gstack | AI 全生命周期工具集（4 skills） |
 | superpowers | AI 开发最佳实践（4 skills） |
 
-### 环境依赖（`forge init`，需要 pyenv/uv/node）
+### 环境依赖（`forge init`，需要 pyenv/uv）
 
 | 工具 | 依赖 | 说明 |
 |------|------|------|
 | pyenv-virtualenv | pyenv | pyenv 虚拟环境插件 |
 | python | pyenv | CPython 源码缓存 |
-| openspec | node + npm | 规范驱动开发框架 |
 | speckit | pyenv python | GitHub Spec Kit（spec-driven development） |
 
 ## 代理配置
@@ -139,26 +167,9 @@ cd forge
 source ~/ai/env.sh
 ```
 
-## AI 开发工具选择安装
+## AI 开发工具
 
-GStack、Superpowers 采用**选择安装**策略，只安装需要的 skills：
-
-### GStack（4 skills）
-
-| 类别 | Skills |
-| --- | --- |
-| 需求/方案挑战 | office-hours |
-| 设计评审 | review |
-| 问题调查 | investigate |
-| QA/验收 | qa-only |
-
-```bash
-forge download gstack
-forge install          # 从 download/ 复制
-forge init skills      # 自动链接到 ~/.claude/skills/gstack-*
-```
-
-### Superpowers（4 skills）
+### Superpowers（开发质量保障）
 
 | 类别 | Skills |
 |------|--------|
@@ -173,42 +184,79 @@ forge install               # 从 download/ 复制
 forge init skills           # 自动链接到 ~/.claude/skills/sp-*
 ```
 
-### OpenSpec（精简工作流）
+### SpecKit（规划工具）
 
-使用自定义 schema `config/openspec/schema.yaml`，仅保留：
-- `proposal` — 需求提案
-- `design` — 设计文档
-- `tasks` — 任务清单
-
-```bash
-forge download openspec
-forge init tools
-forge init config
-# 离线使用：OPENSPEC_TELEMETRY=0 已在 shell/env.sh 中配置
-```
-
-### SpecKit（Spec-Driven Development）
-
-GitHub 官方的规范驱动开发工具，提供 `specify` CLI：
+为比赛工作流提供 plan → tasks 规划能力：
 
 ```bash
 forge download speckit
 forge init tools    # 用 pyenv 的 python 安装
 ```
 
-## 团队协作
+### Security Review（安全审查）
 
-基于 Git + OpenSpec 的协作流程：
+内置安全审查技能，`forge init skills` 后自动部署：
 
-| 步骤 | 命令 | 说明 |
+```bash
+forge init skills
+# 自动链接到 ~/.claude/skills/security-review
+```
+
+## 比赛工作流
+
+### 阶段一：比赛（开发）
+
+3 角色闭环 + Superpowers 工程纪律，确保不跑偏。
+
+| 角色 | 职责 | 工具 |
 |------|------|------|
-| 1. 拉取最新 | `git pull` | 同步代码和 specs |
-| 2. 创建提案 | `/opsx:propose` | OpenSpec 创建 proposal |
-| 3. 设计 | `/opsx:propose` → design | 编写设计文档 |
-| 4. 任务拆分 | `/opsx:propose` → tasks | 拆分任务清单 |
-| 5. 实现 | `/opsx:apply` | 按任务清单实现 |
-| 6. 审查 | `/review` 或 `/requesting-code-review` | 代码审查 |
-| 7. 提交 | `git add . && git commit && git push` | 共享给团队 |
+| **architect** | speckit plan → tasks（锚点文档） | `speckit plan`, `speckit tasks` |
+| **developer** | 按 tasks 逐个实现（TDD） | `superpowers:test-driven-development` |
+| **tester** | 每完成一个 task 立即验证 | `superpowers:verification-before-completion` |
+
+```
+architect → plan + tasks（锚点）
+    ↓
+developer → 逐 task TDD 实现
+    ↓
+tester → 逐 task 即时验证
+    ↓
+    fail → rework → re-verify
+```
+
+防跑偏保障：
+- plan 文件是锚点，developer 只做 plan 里的任务
+- speckit tasks 输出 checklist，list 外的不做
+- 3 角色闭环，跑偏了 tester 立即发现
+
+### 阶段二：赛后（验证）
+
+| 角色 | 职责 |
+|------|------|
+| **security** | 安全漏洞测试（依赖审计、注入、权限） |
+| **cross-tester** | 黑盒交叉测试（边界、集成、回归） |
+
+```
+security + cross-tester + auto-test → 汇总
+    │
+    ├─ 无问题 → 发布
+    └─ 有问题 → 修复 → 重测
+```
+
+### 比赛准备
+
+比赛开始后填写：
+
+```bash
+# 1. 填写技术栈
+$EDITOR config/project/tech-stack.md
+
+# 2. 填写部署逻辑
+$EDITOR shell/deploy.sh
+
+# 3. 重新部署配置
+forge init config
+```
 
 ## Skills
 
@@ -220,14 +268,11 @@ forge skills install anthropics/skills/frontend-design
 
 # 整个仓库
 forge skills install obra/superpowers
-
-# skills 自动链接到 ~/.claude/skills/，Claude Code 和 Codex 均可加载
 ```
 
-内置技能（仓库自带）通过 `forge init skills` 部署：
+内置技能通过 `forge init skills` 部署：
 
 ```bash
-# 部署内置 skill 到 ~/.claude/skills/
 forge init skills
 ```
 
@@ -236,10 +281,7 @@ forge init skills
 MCP Server 配置在 `config/claude/mcp.json`，通过 `forge init mcp` 合并到 `~/.claude/mcp.json`。
 
 ```bash
-# 编辑仓库内 MCP 配置
 $EDITOR config/claude/mcp.json
-
-# 合并到 ~/.claude/mcp.json
 forge init mcp
 forge mcp list
 ```

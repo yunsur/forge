@@ -31,7 +31,6 @@ forge/
 │   │   ├── CLAUDE.md      # Claude Code 全局指令（forge-lite 工作流）
 │   │   ├── agents/        # Agent 角色定义（symlink 到 ~/.claude/agents/）
 │   │   └── mcp.json       # MCP 服务器配置（合并到 ~/.claude/mcp.json）
-│   └── openspec/          # OpenSpec 配置（symlink 到 ~/.config/openspec/）
 ├── download/              # 下载缓存
 │   ├── download.manifest  # 下载记录：name|version|filename
 │   └── update.manifest    # 最新版本缓存：name|version
@@ -123,7 +122,7 @@ install_from() {
 ### 两阶段安装
 
 - **`forge install`** — 调用 `install_from()`，处理环境无关工具（跳过 `ENV_DEPS_TOOLS` 列表中的工具）
-- **`forge init`** — 调用 `install_from()`，仅处理环境依赖工具（pyenv-virtualenv、python、openspec、speckit）+ 配置/skills/mcp/bins
+- **`forge init`** — 调用 `install_from()`，仅处理环境依赖工具（pyenv-virtualenv、python、speckit）+ 配置/skills/mcp/bins
 
 ### 添加新工具
 
@@ -207,7 +206,7 @@ forge init       # 安装环境依赖工具+配置+skills+mcp+bins
 6. **版本锁定** — 安装版本记录在 `versions.lock`，格式 `name|version|date`
 7. **Symlink 管理** — 工具二进制通过 symlink 链接到 `ai/bin/`，配置文件 symlink 到 `~/`
 8. **函数覆盖** — `forge download` 在子 shell 中覆盖 `fetch()`/`fetch_to()`/`link_binary()` 实现只下载
-9. **两阶段安装** — `forge install` 处理环境无关工具（24 个），`forge init` 处理环境依赖工具（4 个：pyenv-virtualenv、python、openspec、speckit）+ 配置
+9. **两阶段安装** — `forge install` 处理环境无关工具（24 个），`forge init` 处理环境依赖工具（3 个：pyenv-virtualenv、python、speckit）+ 配置
 
 ## 验证方式
 

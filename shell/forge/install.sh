@@ -3,14 +3,14 @@
 #
 # 两阶段安装:
 #   forge install   → 安装所有无需运行时依赖的工具（解压+git clone+字体+链接）
-#   forge init      → 安装需要环境依赖的工具（pyenv-virtualenv、python、openspec）+ 配置
+#   forge init      → 安装需要环境依赖的工具（pyenv-virtualenv、python、speckit）+ 配置
 #
 # 子命令:
 #   forge install              全量安装环境无关工具
 #   forge install <tool...>    安装指定工具
 
 # 需要环境依赖的工具列表（跳过，留给 init 处理）
-ENV_DEPS_TOOLS=(pyenv-virtualenv python openspec speckit)
+ENV_DEPS_TOOLS=(pyenv-virtualenv python speckit)
 
 # 检查工具是否在环境依赖列表中
 _is_env_dep() {
@@ -118,13 +118,13 @@ _install_tools() {
 
         ok "安装: ${installed} 成功  ${skipped} 跳过  ${failed} 失败"
     else
-        if [ ! -d "$AI_HOME/tools/gstack" ] && [ ! -d "$AI_HOME/tools/superpowers" ]; then
+        if [ ! -d "$AI_HOME/tools/superpowers" ]; then
             _log "install" "未发现 download.manifest，跳过工具安装"
         fi
     fi
 
-    # git 工具（gstack、superpowers）从 download/ 复制
-    for git_tool in gstack superpowers; do
+    # git 工具（superpowers）从 download/ 复制
+    for git_tool in superpowers; do
         if [ ! -d "$AI_HOME/tools/$git_tool" ]; then
             local src="$downloads/$git_tool"
             if [ -d "$src" ]; then
@@ -192,7 +192,7 @@ cmd_install() {
 
             # git 工具：从 download/ 复制
             case "$tool" in
-                gstack|superpowers)
+                superpowers)
                     if [ ! -d "$AI_HOME/tools/$tool" ] && [ -d "$downloads/$tool" ]; then
                         cp -r "$downloads/$tool" "$AI_HOME/tools/$tool"
                         ok "$tool (from download/)"

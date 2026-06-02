@@ -3,14 +3,15 @@
 #
 # 两阶段安装:
 #   forge install   → 安装所有无需运行时依赖的工具（解压+git clone+字体+链接）
-#   forge init      → 安装需要环境依赖的工具 + 配置（pyenv-virtualenv、python、openspec）
+#   forge init      → 安装需要环境依赖的工具 + 配置（pyenv-virtualenv、python、speckit）
 #
 # 统一原则：所有文件先复制到 ai/，再从 ai/ 软链接到目标位置
 #
 # 子命令:
-#   forge init            全量初始化（环境依赖工具+配置+skills+mcp+链接）
+#   forge init            全量初始化（环境依赖工具+配置+rules+skills+mcp+链接）
 #   forge init tools      仅安装环境依赖工具
-#   forge init config     仅部署配置文件
+#   forge init config     仅部署配置文件（含 commands、tech-stack、deploy.sh）
+#   forge init rules      仅部署 Rules
 #   forge init skills     仅部署 Skills
 #   forge init mcp        仅合并 MCP 配置
 #   forge init bins       仅链接二进制
@@ -23,8 +24,8 @@ _init_tools() {
 
     mkdir -p "$AI_HOME/tools" "$AI_HOME/runtimes"
 
-    # 仅处理需要环境依赖的工具（pyenv-virtualenv、python、openspec）
-    local env_deps=(pyenv-virtualenv python openspec speckit)
+    # 仅处理需要环境依赖的工具（pyenv-virtualenv、python、speckit）
+    local env_deps=(pyenv-virtualenv python speckit)
 
     if [ -f "$manifest_file" ]; then
         _log "init" "安装环境依赖工具（从 download.manifest）"
@@ -139,24 +140,48 @@ _init_dirs() {
 _init_config() {
     _log "init" "部署配置文件"
 
-    if [ -d "$ROOT_DIR/config/openspec" ]; then
-        mkdir -p "$AI_HOME/config/openspec" "$HOME/.config/openspec"
-        cp -r "$ROOT_DIR/config/openspec/"* "$AI_HOME/config/openspec/" 2>/dev/null || true
-        for f in "$AI_HOME/config/openspec"/*; do
-            [ -f "$f" ] && ln -sfn "$f" "$HOME/.config/openspec/$(basename "$f")"
-        done
-        ok "openspec 配置 → ~/.config/openspec/"
-    fi
-
     if [ -d "$ROOT_DIR/config/claude" ]; then
-        mkdir -p "$AI_HOME/config/claude" "$HOME/.claude/agents"
+        mkdir -p "$AI_HOME/config/claude" "$HOME/.claude/agents" "$HOME/.claude/commands"
         cp -r "$ROOT_DIR/config/claude/"* "$AI_HOME/config/claude/" 2>/dev/null || true
         [ -f "$AI_HOME/config/claude/CLAUDE.md" ] && \
             ln -sfn "$AI_HOME/config/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
         for f in "$AI_HOME/config/claude/agents"/*.md; do
             [ -f "$f" ] && ln -sfn "$f" "$HOME/.claude/agents/$(basename "$f")"
         done
+        # 部署 commands（slash commands）
+        if [ -d "$AI_HOME/config/claude/commands" ]; then
+            for f in "$AI_HOME/config/claude/commands"/*.md; do
+                [ -f "$f" ] && ln -sfn "$f" "$HOME/.claude/commands/$(basename "$f")"
+            done
+        fi
         ok "claude 配置 → ~/.claude/ (软链接)"
+    fi
+
+    # 部署项目配置（tech-stack.md）
+    if [ -d "$ROOT_DIR/config/project" ]; then
+        mkdir -p "$AI_HOME/config/project"
+        cp -r "$ROOT_DIR/config/project/"* "$AI_HOME/config/project/" 2>/dev/null || true
+        ok "项目配置 → ai/config/project/"
+    fi
+
+    # 部署 deploy.sh
+    if [ -f "$ROOT_DIR/shell/deploy.sh" ]; then
+        mkdir -p "$AI_HOME/bin"
+        cp "$ROOT_DIR/shell/deploy.sh" "$AI_HOME/bin/deploy.sh"
+        chmod +x "$AI_HOME/bin/deploy.sh"
+        ok "deploy.sh → ai/bin/"
+    fi
+}
+
+# ── rules ──────────────────────────────────────────────────
+
+_init_rules() {
+    _log "init" "部署 Rules"
+
+    if [ -d "$ROOT_DIR/rules" ]; then
+        mkdir -p "$AI_HOME/rules"
+        cp -r "$ROOT_DIR/rules/"* "$AI_HOME/rules/" 2>/dev/null || true
+        ok "rules → ai/rules/"
     fi
 }
 
@@ -191,7 +216,7 @@ _init_skills() {
         [ $builtin_count -gt 0 ] && ok "内置 skills: ${builtin_count} 个"
     fi
 
-    # 独立 skills（download/skills/，非 superpowers/gstack）
+    # 独立 skills（download/skills/，非 superpowers）
     local skill_count=0
     if [ -d "$downloads/skills" ]; then
         for d in "$downloads/skills"/*/; do
@@ -225,59 +250,6 @@ _init_skills() {
             fi
         done
         ok "superpowers skills: ${sp_count}/${#SUPERPOWERS_SKILLS[@]} 个"
-    fi
-
-    local GSTACK_SKILLS=(
-        # 需求/方案挑战
-        office-hours
-        # 设计评审
-        review
-        # 问题调查
-        investigate
-        # QA/验收
-        qa-only
-    )
-    if [ -d "$AI_HOME/tools/gstack" ]; then
-        local gs_count=0
-        for skill in "${GSTACK_SKILLS[@]}"; do
-            if [ -d "$AI_HOME/tools/gstack/$skill" ]; then
-                ln -sfn "$AI_HOME/tools/gstack/$skill" "$HOME/.claude/skills/gstack-${skill}"
-                ((gs_count++)) || true
-            fi
-        done
-        ok "gstack skills: ${gs_count}/${#GSTACK_SKILLS[@]} 个"
-
-        # 裁剪 llms.txt，只保留白名单内的 skills 条目
-        local llms_file="$AI_HOME/tools/gstack/gstack/llms.txt"
-        if [ -f "$llms_file" ]; then
-            local tmp="$llms_file.tmp"
-            local in_skills=0
-            while IFS= read -r line; do
-                if [[ "$line" == "## Skills" ]]; then
-                    in_skills=1
-                    echo "$line" >> "$tmp"
-                    continue
-                fi
-                if [ "$in_skills" -eq 0 ]; then
-                    echo "$line" >> "$tmp"
-                    continue
-                fi
-                # Skills 段：只保留白名单条目
-                if [[ "$line" == "- [/"* ]]; then
-                    local name="${line#- [/}"
-                    name="${name%%]*}"
-                    local keep=0
-                    for skill in "${GSTACK_SKILLS[@]}"; do
-                        [ "$name" = "$skill" ] && { keep=1; break; }
-                    done
-                    [ "$keep" -eq 1 ] && echo "$line" >> "$tmp"
-                else
-                    echo "$line" >> "$tmp"
-                fi
-            done < "$llms_file"
-            mv "$tmp" "$llms_file"
-            ok "llms.txt 已裁剪为白名单 (${#GSTACK_SKILLS[@]} 个 skills)"
-        fi
     fi
 }
 
@@ -347,7 +319,6 @@ _init_bins() {
             node) echo "bin/node bin/npm bin/npx" ;;
             go) echo "bin/go bin/gofmt" ;;
             rust) echo "rustc/bin/rustc cargo/bin/cargo cargo/bin/rustup cargo/bin/rustfmt cargo/bin/cargo-clippy" ;;
-            openspec) echo "package/bin/openspec.js" ;;
             speckit) echo "bin/specify" ;;
             pyenv) echo "bin/pyenv" ;;
             starship) echo "starship" ;;
@@ -422,10 +393,12 @@ cmd_init() {
         skills)         _init_skills ;;
         mcp)            _init_mcp ;;
         bins)           _init_bins ;;
+        rules)          _init_rules ;;
         "")
             _init_tools
             _init_dirs
             _init_config
+            _init_rules
             _init_skills
             _init_mcp
             _init_bins
@@ -433,7 +406,7 @@ cmd_init() {
             echo ""
             echo -e "${G}${BOLD}初始化完成！${NC}"
             echo ""
-            echo -e "  ${D}注意: 环境依赖工具（pyenv-virtualenv、python、openspec）已安装${NC}"
+            echo -e "  ${D}注意: 环境依赖工具（pyenv-virtualenv、python、speckit）已安装${NC}"
             echo -e "  ${D}如需安装其他工具，请先运行: forge install${NC}"
             echo ""
             echo -e "  加载环境:  ${B}source ${AI_HOME}/env.sh${NC}"
@@ -445,7 +418,7 @@ cmd_init() {
             ;;
         *)
             err "未知子命令: forge init $1"
-            echo "用法: forge init [tools|config|skills|mcp|bins]"
+            echo "用法: forge init [tools|config|rules|skills|mcp|bins]"
             return 1
             ;;
     esac

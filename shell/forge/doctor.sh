@@ -12,7 +12,7 @@ cmd_doctor() {
 
     # 1. 检查 ai/bin 中的工具
     echo -e "${B}[工具链]${NC}"
-    for cmd in rg fd fzf jq yq bat eza delta lazygit sg just uv node python3 go rustc cargo claude codex bun openspec; do
+    for cmd in rg fd fzf jq yq bat eza delta lazygit sg just uv node python3 go rustc cargo claude codex bun; do
         if command -v "$cmd" &>/dev/null; then
             local ver="ok"
             set +e
@@ -25,7 +25,6 @@ cmd_doctor() {
                 claude)   ver=$(claude --version 2>/dev/null | head -1) ;;
                 codex)    ver=$(codex --version 2>/dev/null | head -1) ;;
                 bun)      ver=$(bun --version 2>/dev/null) ;;
-                openspec) ver=$(openspec --version 2>/dev/null | head -1) ;;
             esac
             set -e
             printf "  ${G}✓${NC} %-14s %s\n" "$cmd" "$ver"

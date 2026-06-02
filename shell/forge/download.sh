@@ -41,7 +41,6 @@ _fetch_to_for_download() {
 
 _git_repo_for() {
     case "$1" in
-        gstack) echo "garrytan/gstack" ;;
         superpowers) echo "obra/superpowers" ;;
     esac
 }

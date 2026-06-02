@@ -14,7 +14,7 @@ forge - AI 工具版本管理器
   forge update                             仅检查可用更新
   forge download [--force]                 只下载不解压（--force 强制重新下载）
   forge install [tool...]                  安装环境无关工具（解压+链接，无需运行时）
-  forge init                               初始化环境依赖工具+配置（pyenv-virtualenv、python、openspec）
+  forge init                               初始化环境依赖工具+配置（pyenv-virtualenv、python、speckit）
   forge init tools                         仅安装环境依赖工具
   forge init config                        仅部署配置文件
   forge init skills                        仅部署 Skills
