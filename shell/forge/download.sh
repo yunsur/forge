@@ -4,8 +4,8 @@
 # download 专用：覆盖 fetch/fetch_to/link_binary，只下载不安装
 _fetch_for_download() {
     local name="$1" url="$2" format="$3" mode="${4:-}" binary_name="${5:-}"
-    local filename
-    filename=$(basename "$url" | sed 's/?.*//')
+    local filename="${_DOWNLOAD_FILENAME:-}"
+    [ -z "$filename" ] && filename=$(basename "$url" | sed 's/?.*//')
     local dest="$_ROOT/download"
     mkdir -p "$dest"
     # 文件名去重
@@ -15,7 +15,7 @@ _fetch_for_download() {
         filename="${base}.${i}"
     fi
     _log "下载" "$name → $filename"
-    curl $(_curl_download_opts) -o "$dest/$filename" "$url"
+    _curl_download_opts; curl "${_CURL_OPTS[@]}" -o "$dest/$filename" "$url"
     # 更新 install manifest（name|version|filename，去除旧条目）
     local mf="$_ROOT/download/download.manifest"
     [ -f "$mf" ] && sed -i.bak "/^${name}|/d" "$mf" && rm -f "$mf.bak"
@@ -34,7 +34,7 @@ _fetch_to_for_download() {
         while [ -f "$dl_dest/${base}.${i}" ]; do ((i++)); done
         filename="${base}.${i}"
     fi
-    curl $(_curl_download_opts) -o "$dl_dest/$filename" "$url"
+    _curl_download_opts; curl "${_CURL_OPTS[@]}" -o "$dl_dest/$filename" "$url"
     local ver="${filename%.tar.gz}"; ver="${ver%.tgz}"; ver="${ver%.tar.xz}"; ver="${ver%.zip}"
     echo "$(basename "$dest")|${ver}|${filename}" >> "$_ROOT/download/download.manifest"
 }
@@ -66,7 +66,14 @@ _version_eq() {
 
 cmd_download() {
     load_registry
-    local targets=("$@")
+    local force=0
+    local targets=()
+    for arg in "$@"; do
+        case "$arg" in
+            --force|-f) force=1 ;;
+            *) targets+=("$arg") ;;
+        esac
+    done
 
     if [ ${#targets[@]} -eq 0 ]; then
         targets=()
@@ -125,7 +132,7 @@ cmd_download() {
 
         local installed
         installed=$(get_installed "$tool")
-        if [ -n "$installed" ] && _version_eq "$installed" "$latest"; then
+        if [ "$force" -ne 1 ] && [ -n "$installed" ] && _version_eq "$installed" "$latest"; then
             echo -e "  ${D}—${NC} ${tool} ${latest} ${D}(已安装，跳过)${NC}"
             ((skip++)) || true
             continue

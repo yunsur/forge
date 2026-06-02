@@ -69,10 +69,10 @@ export OPENSPEC_TELEMETRY=0
 export DO_NOT_TRACK=1
 
 # ── 内网源（按实际地址覆盖上面的默认值）────────────────
-# export PIP_INDEX_URL="http://172.21.3.9:8081/repository/PyPI_group/simple"
-# export PIP_TRUSTED_HOST="172.21.3.9"
-# export NPM_CONFIG_REGISTRY="http://172.21.3.9:8081/repository/npm_group"
-# export GOPROXY="http://172.21.3.9:8081/repository/golang_group,direct"
+export PIP_INDEX_URL="http://172.21.3.9:8081/repository/PyPI_group/simple"
+export PIP_TRUSTED_HOST="172.21.3.9"
+export NPM_CONFIG_REGISTRY="http://172.21.3.9:8081/repository/npm_group"
+export GOPROXY="http://172.21.3.9:8081/repository/golang_group,direct"
 
 # ── git + delta ──────────────────────────────────────────
 if command -v delta &>/dev/null; then

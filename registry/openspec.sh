@@ -21,9 +21,10 @@ upgrade() {
     fetch "openspec" \
         "https://registry.npmjs.org/@fission-ai/openspec/-/openspec-${latest}.tgz" \
         "tgz" "flat"
-    npm install -g "$TOOLS_DIR/openspec/package" --prefix "$TOOLS_DIR/openspec" 2>/dev/null
-    rm -rf "$TOOLS_DIR/openspec/package"
-    link_binary "$TOOLS_DIR/openspec/bin/openspec"
+    # tarball 解压为 package/ 目录，本地安装依赖后链接 bin
+    (cd "$TOOLS_DIR/openspec/package" && npm install --omit=dev 2>/dev/null) \
+        || { err "openspec npm install 失败"; return 1; }
+    link_binary "$TOOLS_DIR/openspec/package/bin/openspec.js" "openspec"
 }
 
 install_from() {
@@ -31,7 +32,8 @@ install_from() {
     local dest="$TOOLS_DIR/openspec"
     mkdir -p "$dest"
     _tar_quiet tar -xzf "$file" -C "$dest" || { err "openspec 解压失败"; return 1; }
-    npm install -g "$dest/package" --prefix "$dest" 2>/dev/null
-    rm -rf "$dest/package"
-    link_binary "$dest/bin/openspec"
+    # tarball 解压为 package/ 目录，本地安装依赖后链接 bin
+    (cd "$dest/package" && npm install --omit=dev 2>/dev/null) \
+        || { err "openspec npm install 失败"; return 1; }
+    link_binary "$dest/package/bin/openspec.js" "openspec"
 }

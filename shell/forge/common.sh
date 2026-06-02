@@ -5,7 +5,7 @@ _ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 AI_HOME="${AI_HOME:-$HOME/ai}"
 TOOLS_DIR="$AI_HOME/tools"
 RUNTIMES_DIR="$AI_HOME/runtimes"
-TMP_DIR="$AI_HOME/tmp/.download"
+TMP_DIR="$_ROOT/download/.tmp"
 
 OS="${OS:-linux}"
 ARCH="${ARCH:-amd64}"
@@ -24,35 +24,37 @@ ok()    { echo -e "  ${G}✓${NC} $1"; }
 warn()  { echo -e "  ${Y}!${NC} $1" >&2; }
 err()   { echo -e "  ${R}✗${NC} $1" >&2; }
 
-# curl 通用选项（代理和 token）
+# curl 通用选项（代理和 token）— 设置全局数组 _CURL_OPTS
 _curl_base_opts() {
-    local opts=(--connect-timeout 10 --retry 3 --retry-delay 2)
-    [ -n "${https_proxy:-${HTTPS_PROXY:-}}" ] && opts+=(--proxy "${https_proxy:-$HTTPS_PROXY}")
-    [ -n "${http_proxy:-${HTTP_PROXY:-}}" ] && opts+=(--proxy "${http_proxy:-$HTTP_PROXY}")
-    [ -n "${GITHUB_TOKEN:-}" ] && opts+=(-H "Authorization: Bearer $GITHUB_TOKEN")
-    echo "${opts[@]}"
+    _CURL_OPTS+=(--connect-timeout 10 --retry 3 --retry-delay 2 --retry-all-errors)
+    [ -n "${https_proxy:-${HTTPS_PROXY:-}}" ] && _CURL_OPTS+=(--proxy "${https_proxy:-$HTTPS_PROXY}")
+    [ -n "${http_proxy:-${HTTP_PROXY:-}}" ] && _CURL_OPTS+=(--proxy "${http_proxy:-$HTTP_PROXY}")
+    [ -n "${GITHUB_TOKEN:-}" ] && _CURL_OPTS+=(-H "Authorization: Bearer $GITHUB_TOKEN")
 }
 
 # API 请求用（短超时）
 _curl_opts() {
-    local opts=(-fsSL --max-time 30 $(_curl_base_opts))
-    echo "${opts[@]}"
+    _CURL_OPTS=(-fsSL --max-time 30)
+    _curl_base_opts
 }
 
 # 文件下载用（无 max-time 限制）
 _curl_download_opts() {
-    local opts=(-fSL --retry-max-time 0 $(_curl_base_opts))
-    echo "${opts[@]}"
+    _CURL_OPTS=(-fSL --retry-max-time 0)
+    _curl_base_opts
+    _CURL_OPTS+=(-H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36")
 }
 
 # GitHub API: 获取最新 release tag
 github_latest() {
     local repo="$1" version=""
-    version=$(curl $(_curl_opts) "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
+    _curl_opts
+    version=$(curl "${_CURL_OPTS[@]}" "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null \
         | grep '"tag_name"' | head -1 \
         | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/' || true)
     if [ -z "$version" ]; then
-        version=$(curl $(_curl_opts) "https://github.com/${repo}/releases/latest" 2>/dev/null \
+        _curl_opts
+        version=$(curl "${_CURL_OPTS[@]}" "https://github.com/${repo}/releases/latest" 2>/dev/null \
             | grep -o 'releases/tag/[^"]*' \
             | sed -E 's|releases/tag/||' \
             | grep '[0-9]' | head -1 || true)
@@ -65,8 +67,8 @@ fetch() {
     local name="$1" url="$2" format="$3" mode="${4:-}" binary_name="${5:-}"
     _log "下载" "$name"
     local dest="$TOOLS_DIR/$name" tmp="$TMP_DIR/$name"
-    mkdir -p "$dest"
-    curl $(_curl_download_opts) -o "$tmp" "$url"
+    mkdir -p "$dest" "$TMP_DIR"
+    _curl_download_opts; curl "${_CURL_OPTS[@]}" -o "$tmp" "$url"
     _extract "$tmp" "$dest" "$format" "$mode" "$binary_name"
     rm -f "$tmp"
     ok "$name"
@@ -75,9 +77,9 @@ fetch() {
 # 下载 + 解压到指定目录
 fetch_to() {
     local dest="$1" url="$2" format="$3" mode="${4:-}" binary_name="${5:-}"
-    mkdir -p "$dest"
     local tmp="$TMP_DIR/_fetch_$$"
-    curl $(_curl_download_opts) -o "$tmp" "$url"
+    mkdir -p "$dest" "$TMP_DIR"
+    _curl_download_opts; curl "${_CURL_OPTS[@]}" -o "$tmp" "$url"
     _extract "$tmp" "$dest" "$format" "$mode" "$binary_name"
     rm -f "$tmp"
 }
@@ -137,6 +139,7 @@ _extract() {
 # 将二进制链接到 ai/bin/
 link_binary() {
     local src="$1" name="${2:-$(basename "$1")}"
+    [ -f "$src" ] || return 0
     mkdir -p "$AI_HOME/bin"
     ln -sf "$src" "$AI_HOME/bin/$name"
 }
@@ -159,7 +162,7 @@ download_only() {
     local dest="$_ROOT/download"
     mkdir -p "$dest"
     _log "下载" "$name → $filename"
-    curl $(_curl_download_opts) -o "$dest/$filename" "$url"
+    _curl_download_opts; curl "${_CURL_OPTS[@]}" -o "$dest/$filename" "$url"
     ok "$name"
 }
 
@@ -230,6 +233,7 @@ get_latest_version() {
 run_upgrade() {
     local manifest="$1"
     local result_file="$TMP_DIR/.forge_result_$$"
+    mkdir -p "$TMP_DIR"
     rm -f "$result_file"
     (
         source "$manifest"

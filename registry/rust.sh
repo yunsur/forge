@@ -23,19 +23,21 @@ upgrade() {
     [ "$ARCH" = "aarch64" ] && arch="aarch64-unknown-linux-gnu"
 
     fetch "rust" "${RUST_DIST}/rust-${latest}-${arch}.tar.xz" "tar.xz" "strip1"
-    link_binary "$TOOLS_DIR/rust/bin/rustc"
-    link_binary "$TOOLS_DIR/rust/bin/cargo"
-    link_binary "$TOOLS_DIR/rust/bin/rustup"
-    link_binary "$TOOLS_DIR/rust/bin/rustfmt"
-    link_binary "$TOOLS_DIR/rust/bin/cargo-clippy" "cargo-clippy"
+    # tarball 结构: rustc/bin/rustc, cargo/bin/cargo, etc.
+    link_binary "$TOOLS_DIR/rust/rustc/bin/rustc"
+    link_binary "$TOOLS_DIR/rust/cargo/bin/cargo"
+    link_binary "$TOOLS_DIR/rust/cargo/bin/rustup"
+    link_binary "$TOOLS_DIR/rust/cargo/bin/rustfmt"
+    link_binary "$TOOLS_DIR/rust/cargo/bin/cargo-clippy" "cargo-clippy"
 }
 
 install_from() {
     local file="$1"
     install_from_file "$file" "rust" "tar.xz" "strip1"
-    link_binary "$TOOLS_DIR/rust/bin/rustc"
-    link_binary "$TOOLS_DIR/rust/bin/cargo"
-    link_binary "$TOOLS_DIR/rust/bin/rustup"
-    link_binary "$TOOLS_DIR/rust/bin/rustfmt"
-    link_binary "$TOOLS_DIR/rust/bin/cargo-clippy" "cargo-clippy"
+    # tarball 结构: rustc/bin/rustc, cargo/bin/cargo, etc.
+    link_binary "$TOOLS_DIR/rust/rustc/bin/rustc"
+    link_binary "$TOOLS_DIR/rust/cargo/bin/cargo"
+    link_binary "$TOOLS_DIR/rust/cargo/bin/rustup"
+    link_binary "$TOOLS_DIR/rust/cargo/bin/rustfmt"
+    link_binary "$TOOLS_DIR/rust/cargo/bin/cargo-clippy" "cargo-clippy"
 }

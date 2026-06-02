@@ -24,7 +24,12 @@ upgrade() {
     fetch "codex" \
         "https://github.com/openai/codex/releases/download/${tag}/codex-${arch}-unknown-linux-musl.tar.gz" \
         "tar.gz" "flat"
-    chmod +x "$TOOLS_DIR/codex"/codex* 2>/dev/null || true
+    # tarball 内为单文件 codex-<arch>-unknown-linux-musl，需重命名
+    local src_bin="$TOOLS_DIR/codex/codex-${arch}-unknown-linux-musl"
+    if [ -f "$src_bin" ] && [ ! -f "$TOOLS_DIR/codex/codex" ]; then
+        mv "$src_bin" "$TOOLS_DIR/codex/codex"
+    fi
+    chmod +x "$TOOLS_DIR/codex/codex" 2>/dev/null || true
     link_binary "$TOOLS_DIR/codex/codex"
 }
 
@@ -33,6 +38,12 @@ install_from() {
     local dest="$TOOLS_DIR/codex"
     mkdir -p "$dest"
     _tar_quiet tar -xzf "$file" -C "$dest" || { err "codex 解压失败"; return 1; }
-    chmod +x "$dest"/codex* 2>/dev/null || true
-    link_binary "$TOOLS_DIR/codex/codex"
+    # tarball 内为单文件 codex-<arch>-unknown-linux-musl，需重命名
+    local src_bin
+    src_bin=$(find "$dest" -maxdepth 1 -name "codex-*" -type f | head -1)
+    if [ -n "$src_bin" ] && [ "$src_bin" != "$dest/codex" ]; then
+        mv "$src_bin" "$dest/codex"
+    fi
+    chmod +x "$dest/codex" 2>/dev/null || true
+    link_binary "$dest/codex"
 }

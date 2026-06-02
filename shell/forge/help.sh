@@ -12,7 +12,7 @@ forge - AI 工具版本管理器
 
   forge list                               显示所有工具状态
   forge update                             仅检查可用更新
-  forge download                           只下载不解压
+  forge download [--force]                 只下载不解压（--force 强制重新下载）
   forge init                               全量初始化（解压+配置+skills+mcp+链接）
   forge init tools                         仅解压工具
   forge init config                        仅部署配置文件
@@ -23,6 +23,7 @@ forge - AI 工具版本管理器
 
   forge new <name>                         生成新工具的 manifest 模板
   forge pack [file.tgz]                    打包整站用于内网迁移
+  forge push <user@host[:port]> [path]     打包并 scp 到远程（默认 /tmp）
 
   forge skills install <owner/repo/skill>  下载 skill
   forge skills list                        显示已安装 skills

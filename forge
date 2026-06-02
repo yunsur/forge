@@ -9,6 +9,7 @@
 #   forge init              全量初始化
 #   forge init tools|config|skills|mcp|bins  单步初始化
 #   forge list              显示所有工具状态
+#   forge push <target>     打包并 scp 到远程服务器
 #   forge update            仅检查可用更新
 # ─────────────────────────────────────────────────────────
 set -euo pipefail
@@ -32,6 +33,7 @@ case "${1:-}" in
     update)         cmd_check "false" ;;
     new)            shift; cmd_new "$@" ;;
     pack)           shift; cmd_pack "$@" ;;
+    push)           shift; cmd_push "$@" ;;
     skills)         shift; cmd_skills "$@" ;;
     mcp)            shift; cmd_mcp "$@" ;;
     doctor)         cmd_doctor ;;

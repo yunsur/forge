@@ -316,6 +316,17 @@ print(f'  mcp servers: {len(base[\"mcpServers\"])} 个')
 _init_bins() {
     mkdir -p "$AI_HOME/bin"
 
+    # 清理断裂的符号链接
+    local cleaned=0
+    for link in "$AI_HOME/bin"/*; do
+        [ -L "$link" ] || continue
+        if [ ! -e "$link" ]; then
+            rm -f "$link"
+            ((cleaned++)) || true
+        fi
+    done
+    [ $cleaned -gt 0 ] && _log "init" "清理断裂链接: ${cleaned} 个"
+
     _log "init" "链接工具二进制"
 
     _tool_bins() {
@@ -337,8 +348,8 @@ _init_bins() {
             ast-grep) echo "sg" ;;
             node) echo "bin/node bin/npm bin/npx" ;;
             go) echo "bin/go bin/gofmt" ;;
-            rust) echo "bin/rustc bin/cargo bin/rustup bin/rustfmt bin/cargo-clippy" ;;
-            openspec) echo "bin/openspec" ;;
+            rust) echo "rustc/bin/rustc cargo/bin/cargo cargo/bin/rustup cargo/bin/rustfmt cargo/bin/cargo-clippy" ;;
+            openspec) echo "package/bin/openspec.js" ;;
             pyenv) echo "bin/pyenv" ;;
             starship) echo "starship" ;;
             cc-switch-cli) echo "cc-switch" ;;
