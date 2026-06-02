@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────
 # AI 工作站环境
-# 用法: source ~/ai/env.sh
+# 用法: source $AI_HOME/env.sh
 # ─────────────────────────────────────────────────────────
 
-_forge_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AI_HOME="$_forge_root/ai"
+AI_HOME="${AI_HOME:-$HOME/ai}"
 RUNTIMES="$AI_HOME/runtimes"
 
 # 注意：配置文件、skills、MCP 的部署由 init.sh 完成
@@ -101,9 +100,13 @@ if command -v eza &>/dev/null; then
     alias tree="eza --tree --icons --level=3"
 fi
 
+# ── starship ──────────────────────────────────────────────
+if command -v starship &>/dev/null; then
+    eval "$(starship init "${ZSH_VERSION:+zsh}${BASH_VERSION:+bash}")"
+fi
+
 # ── 快速导航 ─────────────────────────────────────────────
 alias ai="cd $AI_HOME"
-alias forgework="cd $_forge_root"
 alias ..="cd .."
 alias ...="cd ../.."
 
@@ -126,5 +129,3 @@ mkcd() { mkdir -p "$1" && cd "$1"; }
 
 # 查看环境变量
 envs() { env | grep -i "${1:-}" | sort; }
-
-unset _forge_root

@@ -15,7 +15,7 @@
 ./forge init
 
 # 4. 加载环境
-source shell/env.sh
+source ~/ai/env.sh
 
 # 5. 检查环境
 ./forge doctor
@@ -83,7 +83,9 @@ forge/
 | go | Go 工具链 |
 | rust / cargo | Rust 工具链 |
 | claude | Claude Code CLI |
+| cc-switch-cli | Claude Code 配置切换 |
 | codex | OpenAI Codex CLI |
+| starship | 跨 shell 提示符 |
 | bun | JavaScript 运行时（GStack 依赖） |
 | openspec | 规范驱动开发框架（proposal/design/tasks） |
 | gstack | AI 全生命周期工具集（12 skills 选择安装） |
@@ -119,7 +121,7 @@ scp forge-*.tgz target:~/
 # 内网机器：解压
 tar xzf forge-*.tgz
 cd forge
-source shell/env.sh
+source ~/ai/env.sh
 ```
 
 ## AI 开发工具选择安装
@@ -172,76 +174,7 @@ forge init config
 
 ## 团队协作
 
-### 架构
-
-```
-┌─────────────┐     HTTP MCP      ┌─────────────────┐
-│  开发者 A    │ ───────────────→  │  GBrain 服务器    │
-│  (客户端)    │                   │  gbrain serve    │
-└─────────────┘                   │  :3131           │
-                                  │  共享知识库        │
-┌─────────────┐     HTTP MCP      └─────────────────┘
-│  开发者 B    │ ───────────────→         ↑
-└─────────────┘                          │
-                                  内网 IP
-┌─────────────┐     HTTP MCP      ┌─────────────────┐
-│  开发者 C    │ ───────────────→  │  内部 GitLab      │
-└─────────────┘                   │  specs 仓库       │
-                                  │  OpenSpec 协作     │
-                                  └─────────────────┘
-```
-
-### 服务端部署（一台机器）
-
-```bash
-# 1. 安装工具
-./forge update && ./forge download && ./forge init
-source shell/env.sh
-
-# 2. 初始化 GBrain
-bash scripts/gbrain-server.sh init
-
-# 3. 后台启动（不需要 root）
-bash scripts/gbrain-server.sh start-bg
-
-# 4. 管理
-bash scripts/gbrain-server.sh status     # 查看状态
-bash scripts/gbrain-server.sh logs       # 查看日志
-bash scripts/gbrain-server.sh stop       # 停止
-bash scripts/gbrain-server.sh restart    # 重启
-
-# 5. 开机自启（二选一，都不需要 root）
-# 方案A: 用户级 systemd
-mkdir -p ~/.config/systemd/user
-bash scripts/gbrain-server.sh user-systemd > ~/.config/systemd/user/gbrain.service
-systemctl --user enable gbrain
-sudo loginctl enable-linger $(whoami)   # 允许未登录时运行
-
-# 方案B: crontab
-crontab -e
-# 添加: @reboot bash /path/to/scripts/gbrain-server.sh start-bg
-```
-
-### 客户端配置（每台开发机）
-
-```bash
-# 1. 解压工具包
-tar xzf forge-*.tgz && cd forge && source shell/env.sh
-
-# 2. 连接 GBrain 服务器
-GBRAIN_SERVER=http://<服务器IP>:3131 source scripts/team-setup.sh gbrain
-
-# 3. 配置 OpenSpec GitLab 仓库
-GITLAB_URL=http://gitlab.internal TEAM_GROUP=team/specs \
-  source scripts/team-setup.sh gitlab
-
-# 4. 生成项目 CLAUDE.md
-source scripts/team-setup.sh claude-md /path/to/project
-
-# 5. 重启 Claude Code 生效
-```
-
-### 团队工作流
+基于 Git + OpenSpec 的协作流程：
 
 | 步骤 | 命令 | 说明 |
 |------|------|------|
@@ -252,18 +185,6 @@ source scripts/team-setup.sh claude-md /path/to/project
 | 5. 实现 | `/opsx:apply` | 按任务清单实现 |
 | 6. 审查 | `/review` 或 `/requesting-code-review` | 代码审查 |
 | 7. 提交 | `git add . && git commit && git push` | 共享给团队 |
-| 8. 回顾 | `/retro` | 每周工程回顾 |
-| 9. 保存记忆 | `/context-save` | 保存到 GBrain |
-
-### 共享内容
-
-| 内容 | 存储位置 | 共享方式 |
-|------|---------|---------|
-| 代码 | GitLab 仓库 | git push/pull |
-| specs (proposal/design/tasks) | GitLab specs 仓库 | git push/pull |
-| 知识/记忆 | GBrain 服务器 | HTTP MCP 实时共享 |
-| 开发经验 | GBrain learnings | gbrain put/search |
-| 进度/timeline | GBrain timeline | 自动记录 |
 
 ## Skills
 

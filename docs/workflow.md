@@ -349,11 +349,7 @@ claude
 
 ## 团队协作
 
-对于团队使用，Forge 支持：
-
-- **GBrain 服务器：** 共享知识/记忆的 HTTP MCP 服务（端口 3131）
-- **GitLab specs 仓库：** 通过 git 共享 OpenSpec 产物（proposal/design/tasks）
-- **多开发者连接：** 连接同一个 GBrain 服务器，通过 git 推拉 specs
+通过 Git 共享 OpenSpec 产物（proposal/design/tasks），团队成员 git push/pull 同步。
 
 ---
 

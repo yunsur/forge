@@ -2,13 +2,18 @@
 # 公共函数库（被 manifest、forge 和 init.sh source）
 
 _ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-AI_HOME="${AI_HOME:-$_ROOT/ai}"
+AI_HOME="${AI_HOME:-$HOME/ai}"
 TOOLS_DIR="$AI_HOME/tools"
 RUNTIMES_DIR="$AI_HOME/runtimes"
 TMP_DIR="$AI_HOME/tmp/.download"
 
 OS="${OS:-linux}"
 ARCH="${ARCH:-amd64}"
+
+# 开发环境检测：在 forge 仓库内运行时拒绝 init
+is_forge_dev() {
+    [ -d "$_ROOT/.git" ] && [ "${FORGE_SKIP_DEV_CHECK:-0}" != "1" ]
+}
 
 # 颜色
 R='\033[0;31m' G='\033[0;32m' Y='\033[1;33m' B='\033[0;34m'

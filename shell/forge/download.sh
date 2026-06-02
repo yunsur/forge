@@ -59,6 +59,11 @@ _git_clone_for_download() {
     fi
 }
 
+_version_eq() {
+    local a="${1#v}" b="${2#v}"
+    [ "$a" = "$b" ]
+}
+
 cmd_download() {
     load_registry
     local targets=("$@")
@@ -78,7 +83,7 @@ cmd_download() {
     mkdir -p "$_ROOT/download"
 
     echo ""
-    local ok=0 fail=0
+    local ok=0 fail=0 skip=0
 
     # git 工具单独处理（克隆到 download/）
     local -a archive_targets=()
@@ -103,6 +108,8 @@ cmd_download() {
         fi
     done
 
+    # 增量：先检查版本，只下载有变化的
+    local -a to_download=()
     for tool in ${archive_targets[@]+"${archive_targets[@]}"}; do
         local manifest
         manifest=$(find_manifest "$tool")
@@ -116,7 +123,24 @@ cmd_download() {
         latest=$(get_latest_version "$manifest")
         [ -z "$latest" ] && latest="?"
 
+        local installed
+        installed=$(get_installed "$tool")
+        if [ -n "$installed" ] && _version_eq "$installed" "$latest"; then
+            echo -e "  ${D}—${NC} ${tool} ${latest} ${D}(已安装，跳过)${NC}"
+            ((skip++)) || true
+            continue
+        fi
+
         echo -e "${B}[下载]${NC} ${BOLD}${tool}${NC}  ${G}${latest}${NC}"
+        to_download+=("$tool")
+    done
+
+    for tool in ${to_download[@]+"${to_download[@]}"}; do
+        local manifest
+        manifest=$(find_manifest "$tool")
+        local latest
+        latest=$(get_latest_version "$manifest")
+        [ -z "$latest" ] && latest="?"
 
         # 覆盖函数：只下载不安装
         _DOWNLOAD_NAME="$tool"
@@ -137,6 +161,6 @@ cmd_download() {
         fi
     done
 
-    echo -e "\n${BOLD}完成:${NC} ${G}${ok} 成功${NC}  ${R}${fail} 失败${NC}"
-    echo -e "${D}文件保存在 download/，执行 init.sh 完成安装${NC}\n"
+    echo -e "\n${BOLD}完成:${NC} ${G}${ok} 成功${NC}  ${D}${skip} 跳过${NC}  ${R}${fail} 失败${NC}"
+    echo -e "${D}文件保存在 download/，执行 forge init 完成安装${NC}\n"
 }

@@ -44,9 +44,23 @@ _init_tools() {
         for tool in "${TOOL_ORDER[@]}"; do
             local files="${TOOL_FILES[$tool]}"
 
+            # 增量：目录存在且版本一致则跳过
             if [ -d "$AI_HOME/tools/$tool" ] || [ -d "$AI_HOME/runtimes/$tool" ]; then
-                ((skipped++)) || true
-                continue
+                local latest_file=""
+                for f in $files; do
+                    [ -f "$downloads/$f" ] && latest_file="$f"
+                done
+                if [ -n "$latest_file" ]; then
+                    local dl_ver
+                    dl_ver=$(grep "^${tool}|" "$manifest_file" 2>/dev/null | tail -1 | cut -d'|' -f2)
+                    local installed_ver
+                    installed_ver=$(get_installed "$tool")
+                    local dl_norm="${dl_ver#v}" inst_norm="${installed_ver#v}"
+                    if [ -n "$installed_ver" ] && [ "$dl_norm" = "$inst_norm" ]; then
+                        ((skipped++)) || true
+                        continue
+                    fi
+                fi
             fi
 
             local mfile=""
@@ -115,7 +129,11 @@ _init_dirs() {
     _log "init" "创建基础目录"
     mkdir -p "$AI_HOME/bin" "$AI_HOME/tools" "$AI_HOME/runtimes" "$AI_HOME/tmp"
     mkdir -p "$HOME/.claude/skills"
-    ok "ai/ 和 ~/ 目录就绪"
+    # env.sh 拷贝到 AI_HOME，使 ai/ 完全脱离 forge/
+    if [ -f "$ROOT_DIR/shell/env.sh" ]; then
+        cp "$ROOT_DIR/shell/env.sh" "$AI_HOME/env.sh"
+    fi
+    ok "目录就绪"
 }
 
 # ── config ──────────────────────────────────────────────────
@@ -230,6 +248,38 @@ _init_skills() {
             fi
         done
         ok "gstack skills: ${gs_count}/${#GSTACK_SKILLS[@]} 个"
+
+        # 裁剪 llms.txt，只保留白名单内的 skills 条目
+        local llms_file="$AI_HOME/tools/gstack/gstack/llms.txt"
+        if [ -f "$llms_file" ]; then
+            local tmp="$llms_file.tmp"
+            local in_skills=0
+            while IFS= read -r line; do
+                if [[ "$line" == "## Skills" ]]; then
+                    in_skills=1
+                    echo "$line" >> "$tmp"
+                    continue
+                fi
+                if [ "$in_skills" -eq 0 ]; then
+                    echo "$line" >> "$tmp"
+                    continue
+                fi
+                # Skills 段：只保留白名单条目
+                if [[ "$line" == "- [/"* ]]; then
+                    local name="${line#- [/}"
+                    name="${name%%]*}"
+                    local keep=0
+                    for skill in "${GSTACK_SKILLS[@]}"; do
+                        [ "$name" = "$skill" ] && { keep=1; break; }
+                    done
+                    [ "$keep" -eq 1 ] && echo "$line" >> "$tmp"
+                else
+                    echo "$line" >> "$tmp"
+                fi
+            done < "$llms_file"
+            mv "$tmp" "$llms_file"
+            ok "llms.txt 已裁剪为白名单 (${#GSTACK_SKILLS[@]} 个 skills)"
+        fi
     fi
 }
 
@@ -290,6 +340,8 @@ _init_bins() {
             rust) echo "bin/rustc bin/cargo bin/rustup bin/rustfmt bin/cargo-clippy" ;;
             openspec) echo "bin/openspec" ;;
             pyenv) echo "bin/pyenv" ;;
+            starship) echo "starship" ;;
+            cc-switch-cli) echo "cc-switch" ;;
         esac
     }
 
@@ -347,6 +399,13 @@ _init_bins() {
 # ── 主入口 ──────────────────────────────────────────────────
 
 cmd_init() {
+    # 开发环境安全防护：禁止在 forge 仓库内生成 ai/
+    if is_forge_dev; then
+        err "当前为开发环境（forge 仓库内），禁止执行 init"
+        echo -e "  ${D}如需强制执行: FORGE_SKIP_DEV_CHECK=1 forge init${NC}"
+        return 1
+    fi
+
     case "${1:-}" in
         tools)          _init_tools ;;
         config)         _init_config ;;
@@ -364,11 +423,11 @@ cmd_init() {
             echo ""
             echo -e "${G}${BOLD}初始化完成！${NC}"
             echo ""
-            echo -e "  加载环境:  ${B}source env.sh${NC}"
+            echo -e "  加载环境:  ${B}source ${AI_HOME}/env.sh${NC}"
             echo -e "  检查环境:  ${B}forge doctor${NC}"
             echo ""
             echo -e "  ${D}提示: 将以下内容添加到 ~/.bashrc 或 ~/.zshrc:${NC}"
-            echo -e "  ${D}source ${ROOT_DIR}/env.sh${NC}"
+            echo -e "  ${D}source ${AI_HOME}/env.sh${NC}"
             echo ""
             ;;
         *)

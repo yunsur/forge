@@ -51,15 +51,15 @@ cmd_doctor() {
 
     # 3. 检查目录结构
     echo -e "\n${B}[目录]${NC}"
-    local dirs=("$AI_HOME/bin" "$AI_HOME/tools" "$AI_HOME/runtimes" "$_ROOT/config" "$_ROOT/mcp" "$_ROOT/shell" "$_ROOT/bin")
+    local dirs=("$AI_HOME/bin" "$AI_HOME/tools" "$AI_HOME/runtimes" "$AI_HOME/mcp" "$AI_HOME/config" "$AI_HOME/skills")
     for d in "${dirs[@]}"; do
         if [ -d "$d" ]; then
             local count
             count=$(ls -1 "$d" 2>/dev/null | wc -l | tr -d ' ')
-            printf "  ${G}✓${NC} %-30s (%s 项)\n" "${d#$_ROOT/}" "$count"
+            printf "  ${G}✓${NC} %-30s (%s 项)\n" "${d#$HOME/}" "$count"
             ((ok++)) || true
         else
-            printf "  ${Y}!${NC} %-30s 不存在\n" "${d#$_ROOT/}"
+            printf "  ${Y}!${NC} %-30s 不存在\n" "${d#$HOME/}"
             ((warn++)) || true
         fi
     done
