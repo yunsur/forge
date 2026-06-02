@@ -11,13 +11,16 @@
 # 2. 下载工具包（仅下载）
 ./forge download
 
-# 3. 初始化运行环境（解压+配置+skills+mcp+链接）
+# 3. 安装环境无关工具（解压+链接，无需运行时）
+./forge install
+
+# 4. 初始化环境依赖工具+配置（pyenv、python、openspec、speckit）
 ./forge init
 
-# 4. 加载环境
+# 5. 加载环境
 source ~/ai/env.sh
 
-# 5. 检查环境
+# 6. 检查环境
 ./forge doctor
 ```
 
@@ -52,7 +55,8 @@ forge/
 | `forge list` | 显示工具状态 |
 | `forge update` | 仅检查可用更新 |
 | `forge download [tool...]` | 下载工具到 `download/`（不解压） |
-| `forge init [tools|config|skills|mcp|bins]` | 初始化运行环境 |
+| `forge install [tool...]` | 安装环境无关工具（解压+链接，无需运行时） |
+| `forge init [tools|config|skills|mcp|bins]` | 初始化环境依赖工具+配置 |
 | `forge uninstall <tool>` | 卸载工具 |
 | `forge skills install <owner/repo/skill>` | 下载 skill |
 | `forge skills install <owner/repo>` | 下载整个 skill 仓库 |
@@ -64,6 +68,8 @@ forge/
 | `forge new <name>` | 生成新工具的 manifest 模板 |
 
 ## 工具清单
+
+### 环境无关（`forge install`）
 
 | 工具 | 说明 |
 |------|------|
@@ -79,7 +85,6 @@ forge/
 | just | 任务运行器 |
 | uv | Python 包管理器 |
 | node / npm / npx | Node.js |
-| python (pyenv) | Python（源码编译） |
 | go | Go 工具链 |
 | rust / cargo | Rust 工具链 |
 | claude | Claude Code CLI |
@@ -87,9 +92,19 @@ forge/
 | codex | OpenAI Codex CLI |
 | starship | 跨 shell 提示符 |
 | bun | JavaScript 运行时（GStack 依赖） |
-| openspec | 规范驱动开发框架（proposal/design/tasks） |
-| gstack | AI 全生命周期工具集（12 skills 选择安装） |
-| superpowers | AI 开发最佳实践（5 skills 选择安装） |
+| pyenv | Python 版本管理（源码脚本） |
+| jetbrains-mono-nf | JetBrains Mono Nerd Font |
+| gstack | AI 全生命周期工具集（4 skills） |
+| superpowers | AI 开发最佳实践（4 skills） |
+
+### 环境依赖（`forge init`，需要 pyenv/uv/node）
+
+| 工具 | 依赖 | 说明 |
+|------|------|------|
+| pyenv-virtualenv | pyenv | pyenv 虚拟环境插件 |
+| python | pyenv | CPython 源码缓存 |
+| openspec | node + npm | 规范驱动开发框架 |
+| speckit | pyenv python | GitHub Spec Kit（spec-driven development） |
 
 ## 代理配置
 
@@ -139,8 +154,8 @@ GStack、Superpowers 采用**选择安装**策略，只安装需要的 skills：
 
 ```bash
 forge download gstack
-forge init tools
-forge init skills       # 自动链接到 ~/.claude/skills/gstack-*
+forge install          # 从 download/ 复制
+forge init skills      # 自动链接到 ~/.claude/skills/gstack-*
 ```
 
 ### Superpowers（4 skills）
@@ -154,8 +169,8 @@ forge init skills       # 自动链接到 ~/.claude/skills/gstack-*
 
 ```bash
 forge download superpowers
-forge init tools
-forge init skills            # 自动链接到 ~/.claude/skills/sp-*
+forge install               # 从 download/ 复制
+forge init skills           # 自动链接到 ~/.claude/skills/sp-*
 ```
 
 ### OpenSpec（精简工作流）
@@ -170,6 +185,15 @@ forge download openspec
 forge init tools
 forge init config
 # 离线使用：OPENSPEC_TELEMETRY=0 已在 shell/env.sh 中配置
+```
+
+### SpecKit（Spec-Driven Development）
+
+GitHub 官方的规范驱动开发工具，提供 `specify` CLI：
+
+```bash
+forge download speckit
+forge init tools    # 用 pyenv 的 python 安装
 ```
 
 ## 团队协作
@@ -205,9 +229,6 @@ forge skills install obra/superpowers
 ```bash
 # 部署内置 skill 到 ~/.claude/skills/
 forge init skills
-
-# 比赛协作流程技能（分支/提交/final-approve 约束）
-~/.claude/skills/team-workflow
 ```
 
 ## MCP 配置

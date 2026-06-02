@@ -6,7 +6,8 @@
 #   forge                   检查并提示更新（类似 brew cu）
 #   forge -a                检查并更新全部（类似 brew cu -a）
 #   forge download            只下载不解压
-#   forge init              全量初始化
+#   forge install           安装环境无关工具（解压+git clone+字体+链接）
+#   forge init              初始化环境依赖工具+配置
 #   forge init tools|config|skills|mcp|bins  单步初始化
 #   forge list              显示所有工具状态
 #   forge push <target>     打包并 scp 到远程服务器
@@ -27,6 +28,7 @@ done
 case "${1:-}" in
     -a|--all)       cmd_check "true" ;;
     download)       shift; cmd_download "$@" ;;
+    install)        shift; cmd_install "$@" ;;
     init)           shift; cmd_init "$@" ;;
     uninstall|rm)   shift; cmd_uninstall "$@" ;;
     list|ls)        cmd_list ;;

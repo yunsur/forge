@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# 命令: init — 运行环境初始化
+# 命令: init — 运行环境初始化（需要运行时依赖的工具 + 配置）
+#
+# 两阶段安装:
+#   forge install   → 安装所有无需运行时依赖的工具（解压+git clone+字体+链接）
+#   forge init      → 安装需要环境依赖的工具 + 配置（pyenv-virtualenv、python、openspec）
 #
 # 统一原则：所有文件先复制到 ai/，再从 ai/ 软链接到目标位置
 #
 # 子命令:
-#   forge init            全量初始化（解压+配置+skills+mcp+链接）
-#   forge init tools      仅解压工具
+#   forge init            全量初始化（环境依赖工具+配置+skills+mcp+链接）
+#   forge init tools      仅安装环境依赖工具
 #   forge init config     仅部署配置文件
 #   forge init skills     仅部署 Skills
 #   forge init mcp        仅合并 MCP 配置
@@ -19,14 +23,23 @@ _init_tools() {
 
     mkdir -p "$AI_HOME/tools" "$AI_HOME/runtimes"
 
-    # 从 download.manifest 解压
+    # 仅处理需要环境依赖的工具（pyenv-virtualenv、python、openspec）
+    local env_deps=(pyenv-virtualenv python openspec speckit)
+
     if [ -f "$manifest_file" ]; then
-        _log "init" "解压工具（从 download.manifest）"
+        _log "init" "安装环境依赖工具（从 download.manifest）"
 
         declare -A TOOL_FILES
         declare -a TOOL_ORDER
         while IFS='|' read -r tname tver tfile; do
             [ -z "$tname" ] && continue
+            # 跳过非环境依赖工具（已在 install 阶段处理）
+            local is_env_dep=0
+            for dep in "${env_deps[@]}"; do
+                [ "$tname" = "$dep" ] && { is_env_dep=1; break; }
+            done
+            [ "$is_env_dep" -eq 0 ] && continue
+
             if [ -z "$tfile" ]; then
                 tfile="$tver"
                 tver=""
@@ -88,7 +101,7 @@ _init_tools() {
                         ); then
                             ((extracted++)) || true
                         else
-                            err "$tool 解压失败: $fname"
+                            err "$tool 安装失败: $fname"
                             ((failed++)) || true
                         fi
                     else
@@ -102,25 +115,10 @@ _init_tools() {
             fi
         done
 
-        ok "解压: ${extracted} 成功  ${skipped} 跳过  ${failed} 失败"
+        ok "环境依赖工具: ${extracted} 成功  ${skipped} 跳过  ${failed} 失败"
     else
-        if [ ! -d "$AI_HOME/tools/gstack" ] && [ ! -d "$AI_HOME/tools/superpowers" ]; then
-            _log "init" "未发现 download.manifest，跳过工具解压"
-        fi
+        _log "init" "未发现 download.manifest，跳过环境依赖工具安装"
     fi
-
-    # git 工具（gstack、superpowers）
-    for git_tool in gstack superpowers; do
-        if [ ! -d "$AI_HOME/tools/$git_tool" ]; then
-            local src="$downloads/$git_tool"
-            if [ -d "$src" ]; then
-                cp -r "$src" "$AI_HOME/tools/$git_tool"
-                ok "$git_tool (from download/)"
-            else
-                warn "$git_tool 未在 download/ 中找到，跳过"
-            fi
-        fi
-    done
 }
 
 # ── dirs ────────────────────────────────────────────────────
@@ -350,6 +348,7 @@ _init_bins() {
             go) echo "bin/go bin/gofmt" ;;
             rust) echo "rustc/bin/rustc cargo/bin/cargo cargo/bin/rustup cargo/bin/rustfmt cargo/bin/cargo-clippy" ;;
             openspec) echo "package/bin/openspec.js" ;;
+            speckit) echo "bin/specify" ;;
             pyenv) echo "bin/pyenv" ;;
             starship) echo "starship" ;;
             cc-switch-cli) echo "cc-switch" ;;
@@ -433,6 +432,9 @@ cmd_init() {
 
             echo ""
             echo -e "${G}${BOLD}初始化完成！${NC}"
+            echo ""
+            echo -e "  ${D}注意: 环境依赖工具（pyenv-virtualenv、python、openspec）已安装${NC}"
+            echo -e "  ${D}如需安装其他工具，请先运行: forge install${NC}"
             echo ""
             echo -e "  加载环境:  ${B}source ${AI_HOME}/env.sh${NC}"
             echo -e "  检查环境:  ${B}forge doctor${NC}"

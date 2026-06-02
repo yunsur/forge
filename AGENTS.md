@@ -15,7 +15,8 @@ forge/
 │       ├── common.sh      # 公共函数库 + forge 共享函数
 │       ├── check.sh       # update 命令（检查更新 + 缓存版本）
 │       ├── download.sh    # download 命令（只下载不解压）
-│       ├── init.sh        # init 命令（解压部署到运行环境）
+│       ├── install.sh     # install 命令（安装环境无关工具）
+│       ├── init.sh        # init 命令（环境依赖工具+配置）
 │       ├── list.sh        # list 命令（3 列显示）
 │       ├── pack.sh        # pack 命令（打包整站）
 │       ├── uninstall.sh   # uninstall 命令
@@ -48,6 +49,7 @@ forge/
 |------|------|
 | `forge` | CLI 入口，source `shell/forge/*.sh` 模块，case 分发命令 |
 | `shell/forge/common.sh` | 公共函数：`fetch()`, `link_binary()`, `github_latest()`, `_dw()`, `_pad()`, 注册表加载 |
+| `shell/forge/install.sh` | install 命令：安装环境无关工具（解压+git clone+字体+链接），跳过 env-dep 工具 |
 | `shell/forge/mcp.sh` | MCP 管理：`mcp install` 安装包，`mcp list` 列出已配置 server |
 | `shell/env.sh` | 运行时环境，配置 PATH、镜像源、symlink 配置、合并 MCP JSON |
 | `config/claude/CLAUDE.md` | Claude Code 全局指令，定义 forge-lite 工作流 |
@@ -71,13 +73,16 @@ done
 case "${1:-}" in
     -a|--all)       cmd_check "true" ;;
     download)       shift; cmd_download "$@" ;;
-    init)           cmd_init ;;
+    install)        shift; cmd_install "$@" ;;
+    init)           shift; cmd_init "$@" ;;
     uninstall|rm)   shift; cmd_uninstall "$@" ;;
     list|ls)        cmd_list ;;
     update)         cmd_check "false" ;;
     new)            shift; cmd_new "$@" ;;
     pack)           shift; cmd_pack "$@" ;;
+    push)           shift; cmd_push "$@" ;;
     skills)         shift; cmd_skills "$@" ;;
+    mcp)            shift; cmd_mcp "$@" ;;
     doctor)         cmd_doctor ;;
     help|--help|-h) show_help ;;
     "")             cmd_check "false" ;;
@@ -108,14 +113,24 @@ upgrade() {
     fetch "工具名" "下载URL" "格式(tar.gz|zip|binary)" "strip层级"
     link_binary "$TOOLS_DIR/工具名/可执行文件名"
 }
+
+install_from() {
+    local file="$1"
+    install_from_file "$file" "工具名" "格式" "mode" "binary_name"
+}
 ```
+
+### 两阶段安装
+
+- **`forge install`** — 调用 `install_from()`，处理环境无关工具（跳过 `ENV_DEPS_TOOLS` 列表中的工具）
+- **`forge init`** — 调用 `install_from()`，仅处理环境依赖工具（pyenv-virtualenv、python、openspec、speckit）+ 配置/skills/mcp/bins
 
 ### 添加新工具
 
 1. `forge new <工具名>` — 生成 manifest 模板
-2. 编辑 `registry/<工具名>.sh`，实现 `get_latest()` 和 `upgrade()`
+2. 编辑 `registry/<工具名>.sh`，实现 `get_latest()`、`upgrade()` 和 `install_from()`
 3. `forge download` — 下载到 `download/`
-4. `forge init` — 解压部署到 `ai/tools/` 并链接到 `ai/bin/`
+4. `forge install` — 安装环境无关工具 / `forge init` — 安装环境依赖工具
 
 ### 常用公共函数（shell/forge/common.sh）
 
@@ -134,10 +149,12 @@ upgrade() {
 | `forge -a` | 检查并更新全部工具 |
 | `forge update` | 仅检查可用更新（缓存到 update.manifest） |
 | `forge download` | 只下载不解压（保存到 download/） |
-| `forge init` | 解压 download/ 并部署到运行环境 |
+| `forge install [tool...]` | 安装环境无关工具（解压+链接，无需运行时） |
+| `forge init [tools|config|skills|mcp|bins]` | 初始化环境依赖工具+配置 |
 | `forge uninstall <tool>` | 卸载指定工具 |
 | `forge list` | 显示所有注册工具状态（3 列） |
 | `forge pack [file.tgz]` | 打包整站用于内网迁移 |
+| `forge push <user@host[:port]>` | 打包并 scp 到远程服务器 |
 | `forge doctor` | 环境健康检查 |
 | `forge new <name>` | 生成新工具 manifest 模板 |
 | `forge skills install/list/remove` | 管理 Agent Skills |
@@ -150,7 +167,8 @@ upgrade() {
 ```
 forge update     # 检查最新版本，缓存到 download/update.manifest
 forge download   # 下载所有工具到 download/
-forge init       # 解压并部署到 ai/tools/ + ai/bin/
+forge install    # 安装环境无关工具（解压+链接）
+forge init       # 安装环境依赖工具+配置+skills+mcp+bins
 ```
 
 ## list 命令显示
@@ -189,6 +207,7 @@ forge init       # 解压并部署到 ai/tools/ + ai/bin/
 6. **版本锁定** — 安装版本记录在 `versions.lock`，格式 `name|version|date`
 7. **Symlink 管理** — 工具二进制通过 symlink 链接到 `ai/bin/`，配置文件 symlink 到 `~/`
 8. **函数覆盖** — `forge download` 在子 shell 中覆盖 `fetch()`/`fetch_to()`/`link_binary()` 实现只下载
+9. **两阶段安装** — `forge install` 处理环境无关工具（24 个），`forge init` 处理环境依赖工具（4 个：pyenv-virtualenv、python、openspec、speckit）+ 配置
 
 ## 验证方式
 

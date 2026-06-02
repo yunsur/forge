@@ -16,10 +16,10 @@ RUNTIMES="$AI_HOME/runtimes"
 # export ALL_PROXY="socks5://127.0.0.1:7890"
 # export NO_PROXY="localhost,127.0.0.1"
 
-# ── pyenv ────────────────────────────────────────────────
+# ── pyenv（最高优先级，确保 python/pip 使用 pyenv 版本）───
 export PYENV_ROOT="$RUNTIMES/pyenv"
 if [ -d "$PYENV_ROOT/bin" ]; then
-    PATH="$PYENV_ROOT/bin:$PATH"
+    export PATH="$PYENV_ROOT/bin:$PATH"
     eval "$(pyenv init -)"
     pyenv commands -q virtualenv-init 2>/dev/null && eval "$(pyenv virtualenv-init -)"
 fi
@@ -41,7 +41,7 @@ if command -v cargo &>/dev/null; then
     [ -d "$CARGO_HOME/bin" ] && PATH="$CARGO_HOME/bin:$PATH"
 fi
 
-# ── 工具二进制（最高优先级，覆盖 pyenv shims）────────
+# ── 工具二进制 ────────────────────────────────────────────
 [ -d "$AI_HOME/bin" ] && PATH="$AI_HOME/bin:$PATH"
 
 # ── 导出 ─────────────────────────────────────────────────
