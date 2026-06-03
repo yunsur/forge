@@ -1,0 +1,24 @@
+# frontend/Dockerfile.dev — 开发环境，增量编译
+# 层缓存: package.json + pnpm-lock.yaml 不变时，跳过 pnpm install
+
+FROM node:24.16.0-slim
+
+# 镜像源（与 env.sh 保持一致，network_mode: host 直达内网）
+RUN npm config set registry http://172.21.3.9:8081/repository/npm_group
+
+# pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+# ── 第一层: 依赖（很少变）──
+# 只要 lock 文件没改，这层就命中缓存
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# ── 第二层: 代码（经常变）──
+COPY . .
+
+EXPOSE 3000
+
+CMD ["pnpm", "dev", "--host", "0.0.0.0"]

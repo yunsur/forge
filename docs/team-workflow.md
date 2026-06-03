@@ -2,6 +2,162 @@
 
 ---
 
+## 架构概览
+
+### 三种模式
+
+| 模式 | 触发词 | 用途 |
+|------|--------|------|
+| **比赛模式** | `比赛模式` / `competition mode` | 完整 3 角色闭环 |
+| **赛后验证** | `赛后验证` / `verification mode` | 安全 + 交叉测试 |
+| **快速通道** | `fast track` / `直接改` | 跳过规划，直接修 |
+| **直接开发** | `直接开发` / `继续开发` | 已有骨架，跳过 architect + scaffold |
+
+### 比赛工作流（核心流程）
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. ARCHITECT 规划                                           │
+│     ├── 读 tech-stack.md（技术栈约束）                        │
+│     ├── speckit plan → plan.md（锚定文档）                    │
+│     └── speckit tasks → tasks.md（原子化任务清单）             │
+│                         ↓                                   │
+│  2. 🔵 PLAN 人工确认（关键环节）                               │
+│     ├── 用户逐项对照原始需求                                  │
+│     ├── ✅ 正确 / ❌ 有误 / ➕ 补充 / ➖ 删减                  │
+│     └── 未确认前 scaffold/developer 不得动                    │
+│                         ↓                                   │
+│  3. SCAFFOLD 搭骨架                                          │
+│     ├── 后端框架初始化（FastAPI + Python）                    │
+│     ├── 前端框架初始化（React + Vite + pnpm）                │
+│     ├── shared 代码（类型定义、工具函数、DB schema）            │
+│     ├── 基础配置（tsconfig、eslint、env 模板）                 │
+│     └── push to main（骨架可运行）                             │
+│                         ↓                                   │
+│  4. DEVELOPER 逐 task TDD 实现                               │
+│     ├── 读 task + 验收标准                                   │
+│     ├── 🔴 写失败测试                                        │
+│     ├── 🟢 写最小实现                                        │
+│     ├── ♻️ 重构（如需要）                                     │
+│     └── ✅ 标记完成                                          │
+│                         ↓                                   │
+│  5. TESTER 即时验证                                          │
+│     ├── Scope Check（范围漂移检测）                           │
+│     ├── Functional（测试通过）                                │
+│     ├── Plan Alignment（符合 plan 意图）                     │
+│     └── Verdict: PASS → 下一个 / FAIL → developer 修复       │
+│                         ↓                                   │
+│  6. 循环 4-5 直到所有 task 完成                               │
+│                         ↓                                   │
+│  7. /commit 提交                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 直接开发模式（跳过 architect + scaffold）
+
+```
+触发: "直接开发" / "继续开发"
+前提: 骨架已存在，tasks.md 已有带编号任务
+
+  1. Claude 读 tasks.md → 展示任务清单（带 #编号）
+  2. 用户选择任务编号（如 4,5,6）
+  3. 输出详细设计 → 用户确认 / 调整 / 跳过
+  4. developer 逐 task 实现（TDD）
+  5. 功能测试通过 → 提 PR
+  6. 循环直到所选 task 完成
+```
+
+### 赛后验证
+
+```
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+│   security   │   │ cross-tester │   │  auto-test   │
+│  安全扫描     │   │  黑盒测试     │   │  全量测试     │
+└──────────────┘   └──────────────┘   └──────────────┘
+       │                  │                  │
+       └──────── 汇总 ────┴──────────────────┘
+                  │
+                  ├─ 无问题 → /deploy
+                  └─ 有问题 → 修复 → 重测
+```
+
+### Anti-Drift 保障
+
+1. **用户先验证 plan** — architect 产出后人机对照验收
+2. **Plan 是锚** — developer 只实现 plan 列出的内容
+3. **原子化 task** — 每个 task 可独立验证
+4. **3 角色闭环** — architect 规划 → developer 实现 → tester 验证，漂移立即被捕获
+
+---
+
+## 本地联调 & 部署
+
+### Docker Compose 全栈环境
+
+模板文件在 `config/project/docker/`，scaffold 阶段复制到项目根目录。
+
+**启动：**
+
+```bash
+docker compose up -d        # 启动 postgres:15 + redis:7 + backend + frontend
+docker compose logs -f backend  # 看后端日志
+docker compose down -v       # 停掉并清数据（重置用）
+```
+
+**增量编译原理：**
+
+```
+Dockerfile 分两层:
+  第一层: COPY requirements.txt / package.json → pip install / pnpm install
+  第二层: COPY . .  (代码)
+
+改代码时只重建第二层，依赖层走缓存 → 启动从 2 分钟降到 5 秒
+```
+
+### 3 人并行联调
+
+```
+每个人本地: docker compose up -d
+
+第 1 个人 (module-a)          第 2 个人 (module-b)          第 3 个人 (module-c)
+├── 改代码 → 容器热重载        ├── 改代码 → 容器热重载        ├── 改代码 → 容器热重载
+├── 本地验证 module-a         ├── 本地验证 module-b         ├── 本地验证 module-c
+└── push → PR                 └── push → PR                 └── push → PR
+
+合并到 main 后:
+├── git pull origin main
+├── docker compose restart     ← 拿到最新代码
+├── 跑全量测试                 ← 验证模块间联调
+└── 通过 → 继续 / 提交
+```
+
+### 联调规则
+
+| 规则 | 说明 |
+|------|------|
+| **本地必须能跑** | 提交前 `docker compose up` 能启动、测试能过 |
+| **合并后重启验证** | 合并 main 后重启容器跑全量测试 |
+| **API 契约先行** | scaffold 阶段定义 OpenAPI 契约，前后端按契约开发 |
+| **DB migration** | schema 变更走 migration 文件，不手动改 DB |
+| **环境变量统一** | `.env.example` 提交仓库，`.env` 不提交 |
+
+### 部署
+
+合并 main → 测试通过 → 选一种部署方式：
+
+```bash
+# 方案 A: Docker 部署（推荐，需要服务器）
+docker compose -f docker-compose.prod.yml up -d --build
+
+# 方案 B: 直接部署（简单项目）
+# 传代码 → 装依赖 → 跑测试 → 启服务
+
+# 方案 C: 静态部署（前后端完全分离）
+# 前端 build → nginx/CDN，后端单独部署
+```
+
+---
+
 ## 两种模式
 
 ### 模式一：完整流程（新项目 / 复杂任务）

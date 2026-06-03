@@ -2,9 +2,10 @@
 set -euo pipefail
 
 # deploy.sh — 比赛时填写部署逻辑
-# 用法: ./deploy.sh [环境]
+# 用法: ./deploy.sh [环境] [远程地址]
 
 ENV="${1:-staging}"
+TARGET="${2:-}"
 
 echo "🚀 部署到: $ENV"
 
@@ -12,23 +13,31 @@ echo "🚀 部署到: $ENV"
 # 比赛开始后填写以下内容
 # ============================================
 
-# 示例 1: SSH 部署
-# TARGET="user@server:/app"
-# tar czf /tmp/deploy.tar.gz --exclude='.git' --exclude='node_modules' .
-# scp /tmp/deploy.tar.gz "$TARGET:/tmp/"
-# ssh "${TARGET%%:*}" "cd /tmp && tar xzf deploy.tar.gz"
+# 1. 检查未提交变更
+if [ -n "$(git status --porcelain)" ]; then
+  echo "❌ 有未提交的变更，请先 commit"
+  exit 1
+fi
 
-# 示例 2: Docker 部署
-# docker build -t myapp .
-# docker push myapp:latest
-# ssh user@server "docker pull myapp:latest && docker-compose up -d"
+# 2. 运行测试
+echo "🧪 运行测试..."
+# docker compose -f docker-compose.test.yml run --rm backend pytest
+# docker compose -f docker-compose.test.yml run --rm frontend pnpm test
 
-# 示例 3: Vercel/Netlify 部署
-# npx vercel --prod
+# 3. 构建 & 部署
+if [ -n "$TARGET" ]; then
+  # 远程部署: 打包传到服务器
+  echo "📦 打包..."
+  tar czf /tmp/deploy.tar.gz --exclude='.git' --exclude='node_modules' --exclude='__pycache__' .
+  echo "📤 传输到 $TARGET..."
+  scp /tmp/deploy.tar.gz "$TARGET:/tmp/"
+  ssh "${TARGET%%:*}" "
+    cd /tmp && tar xzf deploy.tar.gz
+    docker compose up -d --build
+  "
+else
+  # 本地部署
+  docker compose up -d --build
+fi
 
-# 示例 4: 静态文件部署
-# rsync -avz ./dist/ user@server:/var/www/html/
-
-# ============================================
-
-echo "✅ 部署完成"
+echo "✅ 部署完成: $ENV"
