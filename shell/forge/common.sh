@@ -195,6 +195,93 @@ get_installed() {
     [ -f "$LOCK_FILE" ] && grep "^${1}|" "$LOCK_FILE" 2>/dev/null | tail -1 | cut -d'|' -f2 || true
 }
 
+# 单个工具安装函数（供并行调用）
+_install_one_tool() {
+    local tool="$1" manifest_file="$2" downloads="$3" registry_dir="$4"
+
+    # 读取该工具的所有文件
+    local files=""
+    while IFS='|' read -r tname tver tfile; do
+        [ -z "$tname" ] && continue
+        [ "$tname" != "$tool" ] && continue
+        if [ -z "$tfile" ]; then
+            files="${files:+$files }$tver"
+        else
+            files="${files:+$files }$tfile"
+        fi
+    done < "$manifest_file"
+
+    if [ -z "$files" ]; then
+        echo "skip"
+        return
+    fi
+
+    # 增量：目录存在且版本一致则跳过
+    if [ -d "$AI_HOME/tools/$tool" ] || [ -d "$AI_HOME/runtimes/$tool" ]; then
+        local latest_file=""
+        for f in $files; do
+            [ -f "$downloads/$f" ] && latest_file="$f"
+        done
+        if [ -n "$latest_file" ]; then
+            local dl_ver
+            dl_ver=$(grep "^${tool}|" "$manifest_file" 2>/dev/null | tail -1 | cut -d'|' -f2)
+            local installed_ver
+            installed_ver=$(get_installed "$tool")
+            local dl_norm="${dl_ver#v}" inst_norm="${installed_ver#v}"
+            if [ -n "$installed_ver" ] && [ "$dl_norm" = "$inst_norm" ]; then
+                echo "skip"
+                return
+            fi
+        fi
+    fi
+
+    # 查找 registry manifest
+    local mfile=""
+    for m in "$registry_dir"/*.sh; do
+        [ -f "$m" ] || continue
+        if grep -q "^# @name: $tool$" "$m" 2>/dev/null; then
+            mfile="$m"
+            break
+        fi
+    done
+
+    if [ -z "$mfile" ]; then
+        echo "skip"
+        return
+    fi
+
+    if ! grep -q '^install_from()' "$mfile" 2>/dev/null; then
+        echo "skip"
+        return
+    fi
+
+    # 执行安装
+    for fname in $files; do
+        local fpath="$downloads/$fname"
+        if [ -f "$fpath" ]; then
+            if (
+                source "$mfile"
+                install_from "$fpath"
+            ); then
+                # 更新版本锁
+                local dl_ver
+                dl_ver=$(grep "^${tool}|" "$manifest_file" 2>/dev/null | tail -1 | cut -d'|' -f2)
+                [ -n "$dl_ver" ] && set_installed "$tool" "$dl_ver"
+                echo "ok"
+                return
+            else
+                echo "fail"
+                return
+            fi
+        else
+            echo "fail"
+            return
+        fi
+    done
+
+    echo "skip"
+}
+
 set_installed() {
     mkdir -p "$(dirname "$LOCK_FILE")"
     if [ -f "$LOCK_FILE" ] && grep -q "^${1}|" "$LOCK_FILE" 2>/dev/null; then

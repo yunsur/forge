@@ -12,11 +12,23 @@
 # 需要环境依赖的工具列表（跳过，留给 init 处理）
 ENV_DEPS_TOOLS=(pyenv-virtualenv python speckit)
 
+# 默认不安装的工具（需手动指定，如 forge install rust）
+OPTIONAL_TOOLS=(rust go)
+
 # 检查工具是否在环境依赖列表中
 _is_env_dep() {
     local tool="$1"
     for dep in "${ENV_DEPS_TOOLS[@]}"; do
         [ "$tool" = "$dep" ] && return 0
+    done
+    return 1
+}
+
+# 检查工具是否为可选工具（全量安装时跳过）
+_is_optional() {
+    local tool="$1"
+    for opt in "${OPTIONAL_TOOLS[@]}"; do
+        [ "$tool" = "$opt" ] && return 0
     done
     return 1
 }
@@ -33,88 +45,54 @@ _install_tools() {
     if [ -f "$manifest_file" ]; then
         _log "install" "安装工具（从 download.manifest）"
 
-        declare -A TOOL_FILES
-        declare -a TOOL_ORDER
-        while IFS='|' read -r tname tver tfile; do
+        # 收集待处理的工具列表（跳过环境依赖）
+        local tools=()
+        while IFS='|' read -r tname _ _; do
             [ -z "$tname" ] && continue
-            if [ -z "$tfile" ]; then
-                tfile="$tver"
-                tver=""
-            fi
-            # 跳过需要环境依赖的工具
             if _is_env_dep "$tname"; then
                 continue
             fi
-            if [ -z "${TOOL_FILES[$tname]:-}" ]; then
-                TOOL_ORDER+=("$tname")
-                TOOL_FILES[$tname]="$tfile"
-            else
-                TOOL_FILES[$tname]="${TOOL_FILES[$tname]} $tfile"
+            # 全量安装时跳过可选工具
+            if _is_optional "$tname"; then
+                continue
             fi
+            # 去重
+            local found=0
+            for t in "${tools[@]}"; do
+                [ "$t" = "$tname" ] && found=1 && break
+            done
+            [ "$found" -eq 0 ] && tools+=("$tname")
         done < "$manifest_file"
 
         local installed=0 skipped=0 failed=0
 
-        for tool in "${TOOL_ORDER[@]}"; do
-            local files="${TOOL_FILES[$tool]}"
+        # 并行安装：使用 xargs -P 最大化并发
+        local parallel_count
+        parallel_count=$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)
+        # 限制最大并行数，避免资源竞争
+        [ "$parallel_count" -gt 8 ] && parallel_count=8
 
-            # 增量：目录存在且版本一致则跳过
-            if [ -d "$AI_HOME/tools/$tool" ] || [ -d "$AI_HOME/runtimes/$tool" ]; then
-                local latest_file=""
-                for f in $files; do
-                    [ -f "$downloads/$f" ] && latest_file="$f"
-                done
-                if [ -n "$latest_file" ]; then
-                    local dl_ver
-                    dl_ver=$(grep "^${tool}|" "$manifest_file" 2>/dev/null | tail -1 | cut -d'|' -f2)
-                    local installed_ver
-                    installed_ver=$(get_installed "$tool")
-                    local dl_norm="${dl_ver#v}" inst_norm="${installed_ver#v}"
-                    if [ -n "$installed_ver" ] && [ "$dl_norm" = "$inst_norm" ]; then
-                        ((skipped++)) || true
-                        continue
-                    fi
-                fi
+        if [ ${#tools[@]} -gt 0 ]; then
+            local result_file
+            mkdir -p "$TMP_DIR"
+            result_file=$(mktemp "${TMP_DIR}/.install_result_XXXXXX")
+
+            # 使用 xargs 并行执行
+            printf '%s\n' "${tools[@]}" | \
+                xargs -P "$parallel_count" -I {} bash -c '
+                    source "'"$ROOT_DIR"'/shell/forge/common.sh"
+                    result=$(_install_one_tool "{}" "'"$manifest_file"'" "'"$downloads"'" "'"$REGISTRY_DIR"'")
+                    echo "$result" >> "'"$result_file"'"
+                '
+
+            # 统计结果
+            if [ -f "$result_file" ]; then
+                installed=$(grep -c "^ok$" "$result_file" 2>/dev/null || echo 0)
+                skipped=$(grep -c "^skip$" "$result_file" 2>/dev/null || echo 0)
+                failed=$(grep -c "^fail$" "$result_file" 2>/dev/null || echo 0)
+                rm -f "$result_file"
             fi
-
-            local mfile=""
-            for m in "$REGISTRY_DIR"/*.sh; do
-                [ -f "$m" ] || continue
-                if grep -q "^# @name: $tool$" "$m" 2>/dev/null; then
-                    mfile="$m"
-                    break
-                fi
-            done
-
-            if [ -z "$mfile" ]; then
-                warn "未找到 $tool 的 registry manifest，跳过"
-                ((skipped++)) || true
-                continue
-            fi
-
-            if grep -q '^install_from()' "$mfile" 2>/dev/null; then
-                for fname in $files; do
-                    local fpath="$downloads/$fname"
-                    if [ -f "$fpath" ]; then
-                        if (
-                            source "$mfile"
-                            install_from "$fpath"
-                        ); then
-                            ((installed++)) || true
-                        else
-                            err "$tool 安装失败: $fname"
-                            ((failed++)) || true
-                        fi
-                    else
-                        warn "$tool 文件不存在: $fpath"
-                        ((failed++)) || true
-                    fi
-                done
-            else
-                warn "$tool 无 install_from()，跳过"
-                ((skipped++)) || true
-            fi
-        done
+        fi
 
         ok "安装: ${installed} 成功  ${skipped} 跳过  ${failed} 失败"
     else
