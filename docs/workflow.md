@@ -21,7 +21,7 @@ source ~/ai/env.sh
 
 ```bash
 # 填写技术栈
-$EDITOR config/project/tech-stack.md
+$EDITOR ~/ai/config/project/tech-stack.md
 
 # 填写部署逻辑
 $EDITOR shell/deploy.sh
@@ -71,15 +71,15 @@ speckit tasks
 ```
 ## Tasks
 
-- [ ] Task 1: [任务名称]
+- [ ] #1 [任务名称]
   - 验收标准: [具体可验证的条件]
-- [ ] Task 2: [任务名称]
+- [ ] #2 [任务名称]
   - 验收标准: [具体可验证的条件]
-- [ ] Task 3: [任务名称]
+- [ ] #3 [任务名称]
   - 验收标准: [具体可验证的条件]
 ```
 
-**确认 plan 后，开始实现。**
+**确认 plan 后，进入 scaffold 阶段。**
 
 ---
 
@@ -121,7 +121,38 @@ Claude 会输出：
 
 Claude 修正后重新输出，用户再次确认。
 
-**规则：用户未确认前，developer 不得开始写代码。**
+**规则：用户未确认前，scaffold 不得开始搭骨架，developer 不得开始写代码。**
+
+---
+
+## 2.6 Scaffold 搭建骨架
+
+用户确认 plan 后，scaffold 负责搭建项目骨架：
+
+```bash
+# scaffold 在 Claude Code 中
+> scaffold：根据 plan 搭建项目骨架
+```
+
+scaffold 需要完成：
+
+1. **后端框架初始化** — 根据 tech-stack.md 初始化后端框架（Express/FastAPI/Django 等）
+2. **前端框架初始化** — 初始化前端框架（React/Vue/Next.js 等）
+3. **共享代码** — 创建 shared 类型定义、工具函数、数据库 schema 等
+4. **基础配置** — package.json、tsconfig、lint 配置、环境变量模板等
+5. **提交并推送** — push 到 main，确保骨架可运行
+
+```
+🏗️ Scaffold: 搭建项目骨架
+  ├── 后端: Express + TypeScript ✅
+  ├── 前端: React + Vite ✅
+  ├── shared: 类型定义 + 工具函数 ✅
+  ├── 配置: tsconfig, eslint, env ✅
+  ├── 测试: 项目可启动 ✅
+  └── git push origin main ✅
+```
+
+scaffold 完成后，developer 才能开始开发。
 
 ---
 
@@ -271,16 +302,32 @@ Claude 自动执行：
 比赛开始
   ├── 1. architect: speckit plan → tasks
   ├── 2. 🔵 用户对照 plan 逐项确认 ← 人机交互验收
-  ├── 3. developer: 逐 task TDD 实现
-  ├── 4. tester: 逐 task 即时验证
-  ├── 5. 循环 3-4 直到所有 task 完成
-  └── 6. /commit 提交
+  ├── 3. scaffold: 搭建前后端骨架 + shared 代码 → push main
+  ├── 4. developer: 逐 task TDD 实现
+  ├── 5. tester: 逐 task 即时验证
+  ├── 6. 循环 4-5 直到所有 task 完成
+  └── 7. /commit 提交
 
 赛后
-  ├── 7. /security-scan 安全扫描
-  ├── 8. 交叉测试
-  ├── 9. 修复问题
-  └── 10. /deploy 部署
+  ├── 8. /security-scan 安全扫描
+  ├── 9. 交叉测试
+  ├── 10. 修复问题
+  └── 11. /deploy 部署
+```
+
+### 直接开发（跳过 architect + scaffold）
+
+```
+触发: 用户说"直接开发"或"继续开发"
+前提: 项目骨架已存在，tasks.md 已有带编号的任务清单
+
+  ├── 1. Claude 读取 tasks.md，展示任务清单（带 #编号）
+  ├── 2. 用户输入要开发的任务编号（如 4,5,6）
+  ├── 3. Claude 输出详细设计 → 用户确认 / 调整 / 跳过
+  ├── 4. developer 逐 task 实现
+  ├── 5. 功能测试通过 → 提 PR
+  ├── 6. 循环 4-5 直到所选 task 完成
+  └── 7. /commit 提交
 ```
 
 ---

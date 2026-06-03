@@ -17,6 +17,7 @@ Three modes exist:
 | Role | Responsibility | Key Tool |
 |------|---------------|----------|
 | **architect** | Plan → Tasks (anchor document) | `speckit plan`, `speckit tasks` |
+| **scaffold** | Build project skeleton (frameworks, shared code) | framework CLIs, shared types |
 | **developer** | Implement tasks via TDD | `superpowers:test-driven-development` |
 | **tester** | Verify each task immediately | `superpowers:verification-before-completion` |
 
@@ -27,8 +28,12 @@ architect:  speckit plan → plan file (anchor)
             speckit tasks → tasks checklist
                 ↓
 plan review: 🔵 用户对照原始需求逐项确认 plan 和 tasks
-            ├── 确认 → 进入开发
+            ├── 确认 → 进入 scaffold
             └── 纠错 → architect 修正后重新确认
+                ↓
+scaffold:   后端框架初始化 + 前端框架初始化 + shared 代码
+            push to main（骨架可运行）
+            分配任务给 developer-1/2/3
                 ↓
 developer:  for each task:
               1. read task + acceptance criteria
@@ -45,6 +50,36 @@ tester:     verify each completed task:
                 ↓
             proceed to next task / rework if failed
 ```
+
+### Direct Development (直接开发)
+
+For existing projects with skeleton already in place.
+
+Trigger: user says "直接开发" or "继续开发"
+
+Skips: architect, scaffold
+
+Flow:
+
+```
+1. Claude reads tasks.md, shows numbered task list
+2. User selects tasks by number (e.g. "4,5,6")
+3. Claude outputs detailed design for each task
+4. User confirms design (✅), adjusts (❌), or skips (跳过)
+5. Developers pull → checkout branch → implement
+6. Run functional tests — must pass before PR
+7. Submit PR
+```
+
+```
+developer:  pull → checkout branch → implement selected tasks → PR
+```
+
+Use when:
+- Project skeleton already exists
+- tasks.md has pending tasks (with #number IDs)
+- Bug fixes or small feature additions
+- Continuing work from a previous session
 
 ### Anti-Drift Guarantees
 

@@ -27,8 +27,9 @@ speckit tasks → tasks checklist (executable granularity)
 
 ### Plan Phase
 
-1. Read and understand the requirements
-2. Call `speckit plan` to produce the plan file
+1. Read `~/ai/config/project/tech-stack.md` to understand available tech stack
+2. Read and understand the requirements
+3. Call `speckit plan` to produce the plan file
 3. Plan must include:
    - What to build (scope)
    - What NOT to build (anti-scope)
@@ -41,10 +42,16 @@ speckit tasks → tasks checklist (executable granularity)
 
 1. Call `speckit tasks` to produce the tasks checklist
 2. Each task must be:
+   - Numbered with a unique ID (e.g. #1, #2, #3)
    - Atomic (one clear outcome)
    - Verifiable (has a concrete acceptance check)
    - Independently testable (no hidden dependencies)
 3. Tasks must cover: implementation + test + verification
+4. Task format in tasks.md:
+   ```
+   - [ ] #1 [任务名称]
+     - 验收标准: [具体可验证的条件]
+   ```
 
 ### Plan Review Phase (Critical)
 
