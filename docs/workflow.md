@@ -39,7 +39,13 @@ forge init config
 claude
 
 # 说"比赛模式"激活工作流
-> 比赛模式：实现一个文件上传功能，支持拖拽和点击，限制 10MB
+> 比赛模式：[描述你的需求]
+```
+
+例如：
+
+```bash
+> 比赛模式：实现一个用户管理系统，支持注册、登录、个人信息编辑
 ```
 
 Claude 会自动切换到比赛工作流。
@@ -53,11 +59,11 @@ Claude 会自动执行：
 ```bash
 # 产出 plan 文件
 speckit plan
-# → docs/forge/file-upload/plan.md
+# → docs/forge/<项目名>/plan.md
 
 # 产出 tasks 清单
 speckit tasks
-# → docs/forge/file-upload/tasks.md
+# → docs/forge/<项目名>/tasks.md
 ```
 
 你会看到类似输出：
@@ -65,19 +71,57 @@ speckit tasks
 ```
 ## Tasks
 
-- [ ] Task 1: 创建上传 API 端点
-  - 验收标准: POST /api/upload 返回 200，文件存到 uploads/
-- [ ] Task 2: 实现前端上传组件
-  - 验收标准: 支持拖拽和点击，显示进度条
-- [ ] Task 3: 添加文件大小校验
-  - 验收标准: 超过 10MB 返回 413 错误
-- [ ] Task 4: 添加文件类型校验
-  - 验收标准: 只允许图片和 PDF
-- [ ] Task 5: 编写测试
-  - 验收标准: 覆盖所有 task 的验收标准
+- [ ] Task 1: [任务名称]
+  - 验收标准: [具体可验证的条件]
+- [ ] Task 2: [任务名称]
+  - 验收标准: [具体可验证的条件]
+- [ ] Task 3: [任务名称]
+  - 验收标准: [具体可验证的条件]
 ```
 
 **确认 plan 后，开始实现。**
+
+---
+
+## 2.5 Plan 人工对照验收（关键环节）
+
+architect 产出 plan 和 tasks 后，**暂停，等用户确认**。
+
+Claude 会输出：
+
+```
+⏸️  等待用户确认 plan
+
+  原始需求: [用户输入的原始需求]
+
+  Plan 概要:
+  ├── Scope: [要做什么]
+  ├── Anti-scope: [明确不做什么]
+  ├── 技术选型: [关键技术决策]
+  └── 风险: [已识别风险及应对]
+
+  Tasks:
+  1. [任务1] → [验收标准]
+  2. [任务2] → [验收标准]
+  3. [任务3] → [验收标准]
+
+  请逐项确认:
+  ✅ 正确 / ❌ 有误 / ➕ 需补充 / ➖ 需删减
+```
+
+用户需要逐项确认：
+
+```bash
+# 逐项对照原始需求和 plan
+✅ Scope 正确
+❌ 选型不对，应该用 [替代方案]
+➕ 加一个 [功能] 的 task
+➖ [某功能] 不需要，比赛只要求 [核心功能]
+```
+
+Claude 修正后重新输出，用户再次确认。
+
+**规则：用户未确认前，developer 不得开始写代码。**
 
 ---
 
@@ -86,7 +130,7 @@ speckit tasks
 Claude 会按 tasks 清单逐个实现。每个 task 的流程：
 
 ```
-Task 1: 创建上传 API 端点
+Task 1: [任务名称]
 ├── 1. 读 task + 验收标准
 ├── 2. 写失败测试（TDD red）
 ├── 3. 写最小实现（TDD green）
@@ -97,9 +141,9 @@ Task 1: 创建上传 API 端点
 你会看到：
 
 ```
-📝 Task 1: 创建上传 API 端点
-  🔴 写测试: test_upload_returns_200
-  🟢 实现: POST /api/upload
+📝 Task 1: [任务名称]
+  🔴 写测试: test_[功能]_works
+  🟢 实现: [代码逻辑]
   ✅ 测试通过
   📋 标记完成
 ```
@@ -111,8 +155,8 @@ Task 1: 创建上传 API 端点
 每个 task 完成后，tester 立即验证：
 
 ```
-🔍 验证 Task 1: 创建上传 API 端点
-  ├── Scope Check: ✅ 只改了 routes/upload.ts
+🔍 验证 Task 1: [任务名称]
+  ├── Scope Check: ✅ 只改了 [相关文件]
   ├── Functional: ✅ 测试通过
   ├── Plan Alignment: ✅ 符合 plan 意图
   └── Verdict: PASS → 继续下一个
@@ -121,9 +165,9 @@ Task 1: 创建上传 API 端点
 如果失败：
 
 ```
-🔍 验证 Task 2: 实现前端上传组件
-  ├── Scope Check: ⚠️ 改了 utils.ts（不在 task 范围内）
-  ├── Functional: ❌ 拖拽不工作
+🔍 验证 Task 2: [任务名称]
+  ├── Scope Check: ⚠️ 改了 [无关文件]（不在 task 范围内）
+  ├── Functional: ❌ [具体问题]
   ├── Verdict: FAIL
   └── → developer 修复
 ```
@@ -133,11 +177,13 @@ Task 1: 创建上传 API 端点
 ## 5. 循环直到完成
 
 ```
-Task 1: ✅ architect → developer → tester → PASS
-Task 2: ✅ architect → developer → tester → PASS
-Task 3: ❌ architect → developer → tester → FAIL → 修复 → PASS
-Task 4: ✅ architect → developer → tester → PASS
-Task 5: ✅ architect → developer → tester → PASS
+Plan Review: ✅ 用户确认 plan → 开发
+
+Task 1: ✅ developer → tester → PASS
+Task 2: ✅ developer → tester → PASS
+Task 3: ❌ developer → tester → FAIL → 修复 → PASS
+Task 4: ✅ developer → tester → PASS
+Task 5: ✅ developer → tester → PASS
 ```
 
 ---
@@ -146,13 +192,13 @@ Task 5: ✅ architect → developer → tester → PASS
 
 ```bash
 # 在 Claude Code 中
-> /commit "feat(upload): implement file upload with drag-drop"
+> /commit "feat(scope): [提交信息]"
 ```
 
 Claude 自动执行：
 1. `git add -A`
 2. 运行测试
-3. `git commit -m "feat(upload): implement file upload with drag-drop"`
+3. `git commit -m "feat(scope): [提交信息]"`
 
 ---
 
@@ -176,8 +222,8 @@ Claude 自动执行：
 ```
 🔒 安全扫描
   ✅ 敏感信息: 未发现
-  ✅ 依赖安全: npm audit 通过
-  ⚠️  SQL 注入: 发现 1 处（routes/upload.ts:42）
+  ✅ 依赖安全: 审计通过
+  ⚠️  [安全问题]: 发现 1 处（[文件:行号]）
   → 修复后重扫
 ```
 
@@ -187,9 +233,9 @@ Claude 会作为 cross-tester 黑盒测试：
 
 ```
 🔍 交叉测试
-  ├── 用户流程: ✅ 上传成功
-  ├── 边界测试: ✅ 空文件、超大文件、特殊字符
-  ├── 集成测试: ✅ 前后端联调正常
+  ├── 用户流程: ✅ [核心流程验证]
+  ├── 边界测试: ✅ [边界条件验证]
+  ├── 集成测试: ✅ [模块间联调验证]
   └── Verdict: PASS
 ```
 
@@ -224,16 +270,17 @@ Claude 自动执行：
 
 比赛开始
   ├── 1. architect: speckit plan → tasks
-  ├── 2. developer: 逐 task TDD 实现
-  ├── 3. tester: 逐 task 即时验证
-  ├── 4. 循环 2-3 直到所有 task 完成
-  └── 5. /commit 提交
+  ├── 2. 🔵 用户对照 plan 逐项确认 ← 人机交互验收
+  ├── 3. developer: 逐 task TDD 实现
+  ├── 4. tester: 逐 task 即时验证
+  ├── 5. 循环 3-4 直到所有 task 完成
+  └── 6. /commit 提交
 
 赛后
-  ├── 6. /security-scan 安全扫描
-  ├── 7. 交叉测试
-  ├── 8. 修复问题
-  └── 9. /deploy 部署
+  ├── 7. /security-scan 安全扫描
+  ├── 8. 交叉测试
+  ├── 9. 修复问题
+  └── 10. /deploy 部署
 ```
 
 ---
@@ -244,7 +291,7 @@ Claude 自动执行：
 
 ```bash
 # 告诉 architect 更新 plan
-> architect: 需要加一个进度条功能，请更新 plan
+> architect: 需要加一个 [新功能]，请更新 plan
 
 # 不要自己加（会 drift）
 ```
@@ -253,7 +300,7 @@ Claude 自动执行：
 
 ```bash
 # 回退无关改动
-git checkout -- utils.ts
+git checkout -- [误改的文件]
 
 # 只保留 task 范围内的改动
 ```
@@ -262,7 +309,7 @@ git checkout -- utils.ts
 
 ```bash
 # 让 Claude 调试
-> developer: task 3 的测试失败了，请调试
+> developer: task [N] 的测试失败了，请调试
 
 # 使用 systematic-debugging skill
 ```
@@ -271,5 +318,5 @@ git checkout -- utils.ts
 
 ```bash
 # 告诉 architect 更新 plan
-> architect: task 4 不做了，请从 tasks 中移除
+> architect: task [N] 不做了，请从 tasks 中移除
 ```

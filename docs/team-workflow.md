@@ -28,7 +28,7 @@ architect (规划)     developer-1 (实现)    developer-2 (实现)    developer
 
 ```bash
 # 1. 搭建项目骨架
-mkdir my-project && cd my-project
+mkdir <项目名> && cd <项目名>
 git init
 
 # 2. 创建基础结构
@@ -39,7 +39,7 @@ git add -A
 git commit -m "chore: init project skeleton"
 
 # 4. 推送到远程（团队共享）
-git remote add origin git@github.com:team/project.git
+git remote add origin <仓库地址>
 git push -u origin main
 ```
 
@@ -49,28 +49,48 @@ git push -u origin main
 
 ```bash
 # 在 Claude Code 中
-> 比赛模式：实现一个电商系统，包含用户、商品、订单模块
+> 比赛模式：[描述你的需求]
 ```
 
-architect 产出 tasks.md 后，**分配给具体的人**：
+例如：
+
+```bash
+> 比赛模式：实现一个订单处理系统，包含商品管理、购物车、支付模块
+```
+
+architect 产出 tasks.md 后，**等用户确认 plan 再分配给具体的人**：
+
+```bash
+# architect 产出 plan 和 tasks 后
+⏸️  等待用户确认
+
+  用户需要逐项对照原始需求:
+  ✅ 正确 / ❌ 有误 / ➕ 需补充 / ➖ 需删减
+
+  确认通过后 → 分配任务
+```
+
+**规则：用户未确认前，不得开始开发。**
+
+确认后，分配给具体的人：
 
 ```markdown
 ## Tasks
 
-### developer-1 负责（用户模块）
-- [ ] Task 1: 用户注册 API
-- [ ] Task 2: 用户登录 API
-- [ ] Task 3: 用户信息 CRUD
+### developer-1 负责（模块 A）
+- [ ] Task 1: [任务名称]
+- [ ] Task 2: [任务名称]
+- [ ] Task 3: [任务名称]
 
-### developer-2 负责（商品模块）
-- [ ] Task 4: 商品列表 API
-- [ ] Task 5: 商品详情 API
-- [ ] Task 6: 商品搜索
+### developer-2 负责（模块 B）
+- [ ] Task 4: [任务名称]
+- [ ] Task 5: [任务名称]
+- [ ] Task 6: [任务名称]
 
-### developer-3 负责（订单模块）
-- [ ] Task 7: 创建订单 API
-- [ ] Task 8: 订单支付
-- [ ] Task 9: 订单状态管理
+### developer-3 负责（模块 C）
+- [ ] Task 7: [任务名称]
+- [ ] Task 8: [任务名称]
+- [ ] Task 9: [任务名称]
 ```
 
 ---
@@ -82,9 +102,9 @@ architect 产出 tasks.md 后，**分配给具体的人**：
 git pull origin main
 
 # 各自创建分支
-git checkout -b feat/user-module      # developer-1
-git checkout -b feat/product-module   # developer-2
-git checkout -b feat/order-module     # developer-3
+git checkout -b feat/module-a      # developer-1
+git checkout -b feat/module-b      # developer-2
+git checkout -b feat/module-c      # developer-3
 ```
 
 ---
@@ -95,24 +115,24 @@ git checkout -b feat/order-module     # developer-3
 
 ```bash
 # developer-1
-git checkout feat/user-module
+git checkout feat/module-a
 # 实现 Task 1, 2, 3
 
 # developer-2
-git checkout feat/product-module
+git checkout feat/module-b
 # 实现 Task 4, 5, 6
 
 # developer-3
-git checkout feat/order-module
+git checkout feat/module-c
 # 实现 Task 7, 8, 9
 ```
 
 **关键：每个人只改自己模块的文件，不碰别人的。**
 
 ```
-developer-1: src/routes/user.ts, src/models/user.ts
-developer-2: src/routes/product.ts, src/models/product.ts
-developer-3: src/routes/order.ts, src/models/order.ts
+developer-1: src/routes/module_a/, src/models/module_a/
+developer-2: src/routes/module_b/, src/models/module_b/
+developer-3: src/routes/module_c/, src/models/module_c/
 ```
 
 ---
@@ -130,7 +150,7 @@ git rebase origin/main
 git rebase --continue
 
 # 3. 推送自己的分支
-git push origin feat/user-module
+git push origin feat/module-a
 ```
 
 ---
@@ -141,18 +161,18 @@ git push origin feat/user-module
 
 ```bash
 # 在 GitHub 上创建 PR
-feat/user-module → main
+feat/module-a → main
 
 # 或者用 gh CLI
-gh pr create --title "feat: user module" --body "完成用户注册、登录、CRUD"
+gh pr create --title "feat: module A" --body "完成模块 A 的核心功能"
 ```
 
-**合并顺序：先合骨架依赖少的模块**
+**合并顺序：先合依赖少的模块**
 
 ```
-1. developer-1 的 user-module 先合并（其他模块依赖用户）
-2. developer-2 的 product-module 合并
-3. developer-3 的 order-module 最后合并（依赖用户和商品）
+1. developer-1 的 module-a 先合并（其他模块依赖它）
+2. developer-2 的 module-b 合并
+3. developer-3 的 module-c 最后合并（依赖模块 A 和 B）
 ```
 
 ---
@@ -163,8 +183,8 @@ gh pr create --title "feat: user module" --body "完成用户注册、登录、C
 
 | 文件 | 位置 | 用途 |
 |------|------|------|
-| plan.md | `docs/forge/project/plan.md` | 架构决策、scope |
-| tasks.md | `docs/forge/project/tasks.md` | 任务清单、分配、进度 |
+| plan.md | `docs/forge/<项目名>/plan.md` | 架构决策、scope |
+| tasks.md | `docs/forge/<项目名>/tasks.md` | 任务清单、分配、进度 |
 | tech-stack.md | `config/project/tech-stack.md` | 技术栈约定 |
 | CLAUDE.md | `config/claude/CLAUDE.md` | 工作流规则 |
 
@@ -174,19 +194,19 @@ gh pr create --title "feat: user module" --body "完成用户注册、登录、C
 ## Tasks
 
 ### developer-1 负责
-- [x] Task 1: 用户注册 API ✅ 2024-01-15 10:30
-- [x] Task 2: 用户登录 API ✅ 2024-01-15 11:00
-- [ ] Task 3: 用户信息 CRUD 🔄 进行中
+- [x] Task 1: [任务名称] ✅ [时间]
+- [x] Task 2: [任务名称] ✅ [时间]
+- [ ] Task 3: [任务名称] 🔄 进行中
 
 ### developer-2 负责
-- [ ] Task 4: 商品列表 API ⏳ 待开始
-- [ ] Task 5: 商品详情 API ⏳ 待开始
-- [ ] Task 6: 商品搜索 ⏳ 待开始
+- [ ] Task 4: [任务名称] ⏳ 待开始
+- [ ] Task 5: [任务名称] ⏳ 待开始
+- [ ] Task 6: [任务名称] ⏳ 待开始
 
 ### developer-3 负责
-- [ ] Task 7: 创建订单 API ⏳ 待开始
-- [ ] Task 8: 订单支付 ⏳ 待开始
-- [ ] Task 9: 订单状态管理 ⏳ 待开始
+- [ ] Task 7: [任务名称] ⏳ 待开始
+- [ ] Task 8: [任务名称] ⏳ 待开始
+- [ ] Task 9: [任务名称] ⏳ 待开始
 ```
 
 **规则：每完成一个 task，立即更新 tasks.md 并 push。**
@@ -200,15 +220,15 @@ gh pr create --title "feat: user module" --body "完成用户注册、登录、C
 ```
 每个人只改自己模块的文件：
 ├── src/routes/
-│   ├── user.ts       ← 只有 developer-1 改
-│   ├── product.ts    ← 只有 developer-2 改
-│   └── order.ts      ← 只有 developer-3 改
+│   ├── module_a.ts    ← 只有 developer-1 改
+│   ├── module_b.ts    ← 只有 developer-2 改
+│   └── module_c.ts    ← 只有 developer-3 改
 ├── src/models/
-│   ├── user.ts       ← 只有 developer-1 改
-│   ├── product.ts    ← 只有 developer-2 改
-│   └── order.ts      ← 只有 developer-3 改
-└── src/shared/       ← 共享代码，需要协调
-    └── utils.ts      ← 谁改谁负责，改完通知其他人
+│   ├── module_a.ts    ← 只有 developer-1 改
+│   ├── module_b.ts    ← 只有 developer-2 改
+│   └── module_c.ts    ← 只有 developer-3 改
+└── src/shared/        ← 共享代码，需要协调
+    └── utils.ts       ← 谁改谁负责，改完通知其他人
 ```
 
 ### 共享代码规则
@@ -242,7 +262,7 @@ git add src/shared/utils.ts
 git rebase --continue
 
 # 4. 推送
-git push origin feat/user-module
+git push origin feat/module-a
 ```
 
 **如果冲突复杂，找 architect 协调。**
@@ -255,12 +275,13 @@ git push origin feat/user-module
 architect
   ├── 1. 搭建骨架 → push main
   ├── 2. speckit plan → tasks
-  ├── 3. 分配任务给 developer-1/2/3
-  └── 4. 协调冲突、review PR
+  ├── 3. 🔵 用户确认 plan（人机对照验收）
+  ├── 4. 分配任务给 developer-1/2/3
+  └── 5. 协调冲突、review PR
 
 developer-1                  developer-2                  developer-3
   ├── git pull               ├── git pull                 ├── git pull
-  ├── checkout feat/user     ├── checkout feat/product    ├── checkout feat/order
+  ├── checkout feat/module-a ├── checkout feat/module-b   ├── checkout feat/module-c
   ├── 实现 Task 1,2,3        ├── 实现 Task 4,5,6          ├── 实现 Task 7,8,9
   ├── 每完成一个 task:        ├── 每完成一个 task:          ├── 每完成一个 task:
   │   git push               │   git push                 │   git push
@@ -288,7 +309,7 @@ architect review PR → 合并 → 通知其他人 pull
 ```bash
 # 1. 先在 tasks.md 中说明
 # 2. 在自己的分支上改
-# 3. PR 中标注"修改了 shared/utils.ts"
+# 3. PR 中标注"修改了 src/shared/utils.ts"
 # 4. architect review 后合并
 ```
 
@@ -296,7 +317,7 @@ architect review PR → 合并 → 通知其他人 pull
 
 ```bash
 # 查看 tasks.md
-cat docs/forge/project/tasks.md
+cat docs/forge/<项目名>/tasks.md
 
 # 或者在 Claude Code 中
 > 查看当前任务进度
@@ -309,10 +330,10 @@ cat docs/forge/project/tasks.md
 git pull origin main
 
 # 2. 安装依赖
-npm install
+[包管理器] install
 
 # 3. 运行测试
-npm test
+[包管理器] test
 
 # 4. 如果失败，找相关 developer 协调
 ```

@@ -17,6 +17,10 @@ Your job is to produce the **anchor document** — the plan that developer and t
 speckit plan → plan file (anchor)
        ↓
 speckit tasks → tasks checklist (executable granularity)
+       ↓
+⏸️  挂起等用户确认 plan  ← 人机交互对照验收
+       ↓ 确认通过
+       交给 developer
 ```
 
 ## Responsibilities
@@ -41,6 +45,14 @@ speckit tasks → tasks checklist (executable granularity)
    - Verifiable (has a concrete acceptance check)
    - Independently testable (no hidden dependencies)
 3. Tasks must cover: implementation + test + verification
+
+### Plan Review Phase (Critical)
+
+1. Present plan summary and tasks to user for validation
+2. User compares plan against original requirements, confirms/adjusts
+3. **Do NOT hand off to developer until user explicitly confirms**
+4. If user finds issues → revise plan, re-present, wait for confirmation
+5. This step prevents AI misunderstanding from cascading through the entire development
 
 ## Rules
 

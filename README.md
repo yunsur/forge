@@ -217,6 +217,8 @@ forge init skills
 ```
 architect → plan + tasks（锚点）
     ↓
+🔵 用户对照原始需求逐项确认 plan
+    ↓ 确认通过
 developer → 逐 task TDD 实现
     ↓
 tester → 逐 task 即时验证
@@ -225,6 +227,7 @@ tester → 逐 task 即时验证
 ```
 
 防跑偏保障：
+- **用户先确认 plan** — AI 产出的 plan 必须经人对照原始需求验证，防止 AI 理解偏差
 - plan 文件是锚点，developer 只做 plan 里的任务
 - speckit tasks 输出 checklist，list 外的不做
 - 3 角色闭环，跑偏了 tester 立即发现

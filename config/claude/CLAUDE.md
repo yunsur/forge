@@ -26,6 +26,10 @@ Three modes exist:
 architect:  speckit plan → plan file (anchor)
             speckit tasks → tasks checklist
                 ↓
+plan review: 🔵 用户对照原始需求逐项确认 plan 和 tasks
+            ├── 确认 → 进入开发
+            └── 纠错 → architect 修正后重新确认
+                ↓
 developer:  for each task:
               1. read task + acceptance criteria
               2. write failing test (TDD red)
@@ -44,9 +48,10 @@ tester:     verify each completed task:
 
 ### Anti-Drift Guarantees
 
-1. **Plan is the anchor** — developer implements ONLY what the plan lists
-2. **Tasks checklist** — speckit tasks output atomic, verifiable items; nothing outside the list gets done
-3. **3-role loop** — architect plans, developer implements, tester verifies; drift is caught immediately
+1. **Human validates plan first** — architect produces plan, user reviews against real requirements before any code is written
+2. **Plan is the anchor** — developer implements ONLY what the plan lists
+3. **Tasks checklist** — speckit tasks output atomic, verifiable items; nothing outside the list gets done
+4. **3-role loop** — architect plans, developer implements, tester verifies; drift is caught immediately
 
 ### Triggering
 
