@@ -2,21 +2,36 @@
 # 命令: pack
 
 cmd_pack() {
-    local out="${1:-forge_$(date +%Y%m%d%H).tgz}"
-    echo -e "${B}[打包]${NC} $out"
+    local target="${1:-full}"
+    local out="forge_$(date +%Y%m%d%H).tgz"
     local staging
     staging=$(mktemp -d)
     local dest="$staging/forge"
     mkdir -p "$dest"
-    # 复制 download/（下载的压缩包和 git 工具）
-    if [ -d "$_ROOT/download" ]; then
-        cp -r "$_ROOT/download" "$dest/"
-    fi
-    # 项目文件（shell/ 已包含 env.sh 和 forge 模块）
-    for d in config shell registry; do
-        [ -d "$_ROOT/$d" ] && cp -r "$_ROOT/$d" "$dest/"
-    done
-    [ -f "$_ROOT/forge" ] && cp "$_ROOT/forge" "$dest/"
+
+    case "$target" in
+        config)
+            # 仅打包配置（config + shell + forge 命令）
+            out="forge_config_$(date +%Y%m%d%H).tgz"
+            echo -e "${B}[打包配置]${NC} $out"
+            [ -d "$_ROOT/config" ] && cp -r "$_ROOT/config" "$dest/"
+            [ -d "$_ROOT/shell" ] && cp -r "$_ROOT/shell" "$dest/"
+            [ -f "$_ROOT/forge" ] && cp "$_ROOT/forge" "$dest/"
+            ;;
+        full|*)
+            # 全量打包（所有内容）
+            echo -e "${B}[打包]${NC} $out"
+            # 复制 download/（下载的压缩包和 git 工具）
+            if [ -d "$_ROOT/download" ]; then
+                cp -r "$_ROOT/download" "$dest/"
+            fi
+            # 项目文件（shell/ 已包含 env.sh 和 forge 模块）
+            for d in config shell registry; do
+                [ -d "$_ROOT/$d" ] && cp -r "$_ROOT/$d" "$dest/"
+            done
+            [ -f "$_ROOT/forge" ] && cp "$_ROOT/forge" "$dest/"
+            ;;
+    esac
     # 去除 macOS 特殊文件
     find "$staging" -name '.DS_Store' -delete 2>/dev/null
     find "$staging" -name '._*' -delete 2>/dev/null

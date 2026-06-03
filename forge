@@ -10,6 +10,7 @@
 #   forge init              初始化环境依赖工具+配置
 #   forge init tools|config|skills|mcp|bins  单步初始化
 #   forge list              显示所有工具状态
+#   forge pack [config|full] 打包用于迁移（config=仅配置，full=全量默认）
 #   forge push <target>     打包并 scp 到远程服务器
 #   forge update            仅检查可用更新
 # ─────────────────────────────────────────────────────────
@@ -35,6 +36,7 @@ case "${1:-}" in
     update)         cmd_check "false" ;;
     new)            shift; cmd_new "$@" ;;
     pack)           shift; cmd_pack "$@" ;;
+    merge)          shift; cmd_merge "$@" ;;
     push)           shift; cmd_push "$@" ;;
     skills)         shift; cmd_skills "$@" ;;
     mcp)            shift; cmd_mcp "$@" ;;

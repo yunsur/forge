@@ -23,7 +23,8 @@ forge - AI 工具版本管理器
   forge uninstall                          卸载指定工具
 
   forge new <name>                         生成新工具的 manifest 模板
-  forge pack [file.tgz]                    打包整站用于内网迁移
+  forge pack [config|full]                 打包用于迁移（config=仅配置，full=全量默认）
+  forge merge config <archive.tgz>         合并配置包到当前环境
   forge push <user@host[:port]> [path]     打包并 scp 到远程（默认 /tmp）
 
   forge skills install <owner/repo/skill>  下载 skill
