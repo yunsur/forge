@@ -45,7 +45,7 @@ forge/
 │   └── project/
 │       └── tech-stack.md # 技术栈（比赛时填写）
 ├── download/            # 下载缓存与 manifest
-├── versions.lock        # 已安装版本记录
+│   └── versions.lock    # 已安装版本记录
 └── ai/                  # 运行时（gitignore）
     ├── bin/             # 工具符号链接 + deploy.sh
     ├── tools/           # 工具安装目录

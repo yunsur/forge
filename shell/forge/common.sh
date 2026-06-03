@@ -177,7 +177,7 @@ install_from_file() {
 # ── Forge CLI 共享函数 ────────────────────────────────────
 
 REGISTRY_DIR="${REGISTRY_DIR:-$_ROOT/registry}"
-LOCK_FILE="${LOCK_FILE:-$_ROOT/versions.lock}"
+LOCK_FILE="${LOCK_FILE:-$_ROOT/download/versions.lock}"
 
 load_registry() {
     REGISTRY=()

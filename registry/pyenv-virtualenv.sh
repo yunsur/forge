@@ -11,10 +11,12 @@ get_latest() { github_latest "pyenv/pyenv-virtualenv"; }
 upgrade() {
     local latest; latest=$(get_latest)
     [ -z "$latest" ] && { err "无法获取最新版本"; exit 1; }
+    export _DOWNLOAD_FILENAME="pyenv-virtualenv-${latest}.tar.gz"
     local dest="$RUNTIMES_DIR/pyenv/plugins/pyenv-virtualenv"
     fetch_to "$dest" \
         "https://github.com/pyenv/pyenv-virtualenv/archive/refs/tags/${latest}.tar.gz" \
         "tar.gz" "strip1"
+    unset _DOWNLOAD_FILENAME
 }
 
 install_from() {

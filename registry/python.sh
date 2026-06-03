@@ -26,4 +26,28 @@ install_from() {
     local dest="$RUNTIMES_DIR/python"
     mkdir -p "$dest"
     cp "$file" "$dest/Python-${VERSION}.tar.xz"
+
+    # 实际编译安装 Python
+    local pyenv_root="$RUNTIMES_DIR/pyenv"
+    if [ -x "$pyenv_root/bin/pyenv" ]; then
+        # 强制使用 forge 路径，不使用默认 ~/.pyenv
+        export PYENV_ROOT="$pyenv_root"
+        export PATH="$pyenv_root/bin:$PATH"
+        export PYTHON_BUILD_CACHE_PATH="$dest"
+
+        # 检查是否已安装该版本
+        if ! "$pyenv_root/bin/pyenv" versions --bare 2>/dev/null | grep -q "^${VERSION}$"; then
+            echo "  编译安装 Python ${VERSION}..."
+            "$pyenv_root/bin/pyenv" install "$VERSION" || {
+                err "Python ${VERSION} 安装失败"
+                return 1
+            }
+        fi
+
+        # 设置为全局版本
+        "$pyenv_root/bin/pyenv" global "$VERSION" 2>/dev/null || true
+        unset PYTHON_BUILD_CACHE_PATH
+    else
+        warn "pyenv 未安装，跳过 Python 编译（请先安装 pyenv）"
+    fi
 }

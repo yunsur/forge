@@ -108,7 +108,7 @@ Qualifying changes:
 
 How to use:
 
-- The user says "fast track", "quick fix", or "直接改"
+- The user says "fast track", "quick fix", "直接改", or "快速模式"
 - Or the change is obviously trivial (1-3 lines, no logic change)
 
 What is skipped:

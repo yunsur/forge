@@ -22,6 +22,21 @@ if [ -d "$PYENV_ROOT/bin" ]; then
     export PATH="$PYENV_ROOT/bin:$PATH"
     eval "$(pyenv init -)"
     pyenv commands -q virtualenv-init 2>/dev/null && eval "$(pyenv virtualenv-init -)"
+
+    # 激活已安装的 Python 版本（优先 global → local → 第一个已安装版本）
+    _pyenv_version=""
+    if [ -f "$PYENV_ROOT/version" ]; then
+        _pyenv_version=$(cat "$PYENV_ROOT/version")
+    elif [ -f ".python-version" ]; then
+        _pyenv_version=$(cat ".python-version")
+    else
+        # 取已安装版本列表中最新的非系统版本
+        _pyenv_version=$("$PYENV_ROOT/bin/pyenv" versions --bare 2>/dev/null | grep -v '^system' | tail -1)
+    fi
+    if [ -n "$_pyenv_version" ]; then
+        pyenv shell "$_pyenv_version" 2>/dev/null || true
+    fi
+    unset _pyenv_version
 fi
 
 # ── Go ───────────────────────────────────────────────────

@@ -33,8 +33,8 @@ forge/
 │   │   └── mcp.json       # MCP 服务器配置（合并到 ~/.claude/mcp.json）
 ├── download/              # 下载缓存
 │   ├── download.manifest  # 下载记录：name|version|filename
-│   └── update.manifest    # 最新版本缓存：name|version
-├── versions.lock          # 已安装版本记录：name|version|date
+│   ├── update.manifest    # 最新版本缓存：name|version
+│   └── versions.lock      # 已安装版本记录：name|version|date
 └── ai/                    # 运行时目录（gitignored）
     ├── tools/             # 已安装工具目录
     ├── bin/               # 工具二进制 symlink
@@ -54,7 +54,7 @@ forge/
 | `config/claude/CLAUDE.md` | Claude Code 全局指令，定义 forge-lite 工作流 |
 | `config/claude/agents/*.md` | Agent 角色定义（architect, backend, frontend, security, tech-lead, tester） |
 | `config/claude/mcp.json` | MCP 服务器配置，init 时合并到 `~/.claude/mcp.json` |
-| `versions.lock` | 版本锁定文件，格式：`name|version|date` |
+| `download/versions.lock` | 版本锁定文件，格式：`name|version|date` |
 | `download/update.manifest` | 最新版本缓存，由 `forge update` 写入 |
 
 ## Forge 入口
@@ -203,7 +203,7 @@ forge init       # 安装环境依赖工具+配置+skills+mcp+bins
 3. **macOS bash 3.2 兼容** — 不使用 `declare -A`（关联数组），用 case 语句替代
 4. **中文输出** — 用户界面消息使用中文
 5. **离线优先** — 所有工具必须可打包离线部署
-6. **版本锁定** — 安装版本记录在 `versions.lock`，格式 `name|version|date`
+6. **版本锁定** — 安装版本记录在 `download/versions.lock`，格式 `name|version|date`
 7. **Symlink 管理** — 工具二进制通过 symlink 链接到 `ai/bin/`，配置文件 symlink 到 `~/`
 8. **函数覆盖** — `forge download` 在子 shell 中覆盖 `fetch()`/`fetch_to()`/`link_binary()` 实现只下载
 9. **两阶段安装** — `forge install` 处理环境无关工具（24 个），`forge init` 处理环境依赖工具（3 个：pyenv-virtualenv、python、speckit）+ 配置
@@ -218,7 +218,7 @@ forge doctor
 forge list
 
 # 检查版本锁定
-cat versions.lock
+cat download/versions.lock
 
 # 测试单个 manifest
 source registry/<tool>.sh && get_latest

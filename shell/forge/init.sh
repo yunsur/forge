@@ -58,8 +58,17 @@ _init_tools() {
         for tool in "${TOOL_ORDER[@]}"; do
             local files="${TOOL_FILES[$tool]}"
 
-            # 增量：目录存在且版本一致则跳过
-            if [ -d "$AI_HOME/tools/$tool" ] || [ -d "$AI_HOME/runtimes/$tool" ]; then
+            # 增量：已安装且版本一致则跳过
+            # 对于 python，需要检查 pyenv 是否真正安装了该版本
+            local skip_tool=0
+            if [ "$tool" = "python" ]; then
+                local pyenv_bin="$AI_HOME/runtimes/pyenv/bin/pyenv"
+                local dl_ver
+                dl_ver=$(grep "^${tool}|" "$manifest_file" 2>/dev/null | tail -1 | cut -d'|' -f2)
+                if [ -x "$pyenv_bin" ] && "$pyenv_bin" versions --bare 2>/dev/null | grep -q "^${dl_ver}$"; then
+                    skip_tool=1
+                fi
+            elif [ -d "$AI_HOME/tools/$tool" ] || [ -d "$AI_HOME/runtimes/$tool" ]; then
                 local latest_file=""
                 for f in $files; do
                     [ -f "$downloads/$f" ] && latest_file="$f"
@@ -71,10 +80,13 @@ _init_tools() {
                     installed_ver=$(get_installed "$tool")
                     local dl_norm="${dl_ver#v}" inst_norm="${installed_ver#v}"
                     if [ -n "$installed_ver" ] && [ "$dl_norm" = "$inst_norm" ]; then
-                        ((skipped++)) || true
-                        continue
+                        skip_tool=1
                     fi
                 fi
+            fi
+            if [ $skip_tool -eq 1 ]; then
+                ((skipped++)) || true
+                continue
             fi
 
             local mfile=""
