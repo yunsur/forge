@@ -29,6 +29,7 @@ For each task in tasks checklist:
 3. **TDD discipline** — write test first, then implement, then refactor
 4. **Minimal implementation** — do only what the task requires, nothing more
 5. **Mark completion** — update the tasks checklist when done
+6. **Frontend development**: Use `web-react-cli` skill when developing React frontend pages and components
 
 ## Rules
 

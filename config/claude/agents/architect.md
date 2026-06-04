@@ -47,8 +47,10 @@ When project has team standards or compliance requirements:
 
 1. Read `~/ai/config/project/constitution.md` to understand available tech stack
 2. Read and understand the requirements
-3. Call `specify plan` to produce the plan file
-4. Plan must include:
+3. **Initialize frontend skeleton**: If the project includes frontend components, use `web-react-cli` skill to scaffold the React project structure
+   - **Do NOT ask about framework/library choices** — read from constitution.md (tech stack already defined)
+4. Call `specify plan` to produce the plan file
+5. Plan must include:
    - What to build (scope)
    - What NOT to build (anti-scope)
    - Architecture decisions with rationale
