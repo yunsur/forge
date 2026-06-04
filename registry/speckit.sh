@@ -47,13 +47,8 @@ _install_speckit() {
         return 1
     fi
 
-    # 加载 env.sh 获取 PyPI 源配置
-    local env_sh="$SCRIPT_DIR/../shell/env.sh"
-    if [ -f "$env_sh" ]; then
-        # 仅导出最后出现的 PIP 相关变量（内网源会覆盖公网源）
-        export PIP_INDEX_URL=$(grep -E '^export PIP_INDEX_URL=' "$env_sh" | tail -1 | sed 's/^export [^=]*=//')
-        export PIP_TRUSTED_HOST=$(grep -E '^export PIP_TRUSTED_HOST=' "$env_sh" | tail -1 | sed 's/^export [^=]*=//')
-    fi
+    export PIP_INDEX_URL="http://172.21.3.9:8081/repository/PyPI_group/simple"
+    export PIP_TRUSTED_HOST="172.21.3.9"
 
     # 使用 --target 安装到指定目录
     (cd "$dest" && $python_cmd -m pip install --target "$dest/lib" .) \
