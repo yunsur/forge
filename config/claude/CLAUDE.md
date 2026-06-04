@@ -16,16 +16,17 @@ Three modes exist:
 
 | Role | Responsibility | Key Tool |
 |------|---------------|----------|
-| **architect** | Plan → Tasks (anchor document) | `speckit plan`, `speckit tasks` |
+| **architect** | Requirements decomposition → Plan → Tasks (anchor document) | `speckit plan`, `speckit tasks` |
 | **scaffold** | Build project skeleton (frameworks, shared code) | framework CLIs, shared types |
-| **developer** | Implement tasks via TDD | `superpowers:test-driven-development` |
+| **developer** | Implement tasks via TDD, one branch per task | `superpowers:test-driven-development` |
 | **tester** | Verify each task immediately | `superpowers:verification-before-completion` |
 
 ### Flow
 
 ```
-architect:  speckit plan → plan file (anchor)
-            speckit tasks → tasks checklist
+architect:  需求拆解 → 细化需求文档
+            speckit plan → plan file (anchor)
+            speckit tasks → tasks checklist (每项带 task-id + P0/P1/P2 优先级)
                 ↓
 plan review: 🔵 用户对照原始需求逐项确认 plan 和 tasks
             ├── 确认 → 进入 scaffold
@@ -33,14 +34,23 @@ plan review: 🔵 用户对照原始需求逐项确认 plan 和 tasks
                 ↓
 scaffold:   后端框架初始化 + 前端框架初始化 + shared 代码
             push to main（骨架可运行）
-            分配任务给 developer-1/2/3
+            按依赖关系分配任务给 developer-1/2/3
                 ↓
-developer:  for each task:
-              1. read task + acceptance criteria
-              2. write failing test (TDD red)
-              3. implement minimal code (TDD green)
-              4. refactor if needed
-              5. mark task complete
+parallel:   developer 并行开发（每人独立分支 feat/task-{id}）
+            ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐
+            │ developer-1          │ │ developer-2          │ │ developer-3          │
+            │ feat/task-1          │ │ feat/task-2          │ │ feat/task-3          │
+            │ 1. read task + AC    │ │ 1. read task + AC    │ │ 1. read task + AC    │
+            │ 2. write failing test│ │ 2. write failing test│ │ 2. write failing test│
+            │ 3. implement (green) │ │ 3. implement (green) │ │ 3. implement (green) │
+            │ 4. refactor if needed│ │ 4. refactor if needed│ │ 4. refactor if needed│
+            │ 5. mark task complete│ │ 5. mark task complete│ │ 5. mark task complete│
+            └──────┬───────────────┘ └──────┬───────────────┘ └──────┬───────────────┘
+                   └──────── merge to main ────────┘
+                ↓
+MVP checkpoint: 所有 P0 任务完成 → 核心链路可演示
+            ├── 是 → 进入 demo 收尾
+            └── 否 → 继续补 P0，P1/P2 视时间决定
                 ↓
 tester:     verify each completed task:
               1. scope check (no drift)
@@ -80,6 +90,126 @@ Use when:
 - tasks.md has pending tasks (with #number IDs)
 - Bug fixes or small feature additions
 - Continuing work from a previous session
+
+### Requirements Decomposition (需求拆解)
+
+When the input is a rough/brief competition prompt, architect must first decompose before planning.
+
+Steps:
+
+1. **Extract core objectives** — identify the main goal, user scenarios, and functional boundaries from the prompt
+2. **Identify gaps** — list what the prompt doesn't specify but must be decided (data model, auth, scale, etc.)
+3. **Ask user to confirm** — present the decomposition as structured questions; user confirms or overrides
+4. **Output detailed requirements doc** — becomes the input for `speckit plan`
+
+Decomposition template:
+
+| Dimension | Result |
+|-----------|--------|
+| Core features | ... |
+| User roles | ... |
+| Tech constraints | ... |
+| Open questions | ... (pending user confirmation) |
+
+Skip decomposition when:
+- Requirements are already detailed and unambiguous
+- User says "直接开发" or "fast track"
+
+### Priority & Scope Control (优先级与砍需求)
+
+Every task in `speckit tasks` must carry a priority tag:
+
+| Priority | Meaning | Rule |
+|----------|---------|------|
+| **P0** | Must-have, MVP core | Must complete before competition ends |
+| **P1** | Should-have, important | Complete if time permits after P0 |
+| **P2** | Nice-to-have, stretch | Only if P0+P1 are done |
+
+When time is running out:
+
+1. Drop P2 tasks immediately
+2. Drop P1 tasks if less than 30% time remains
+3. Focus all developers on remaining P0 tasks
+4. If all P0 done, quick-win P1 tasks can be attempted
+
+architect decides priority during task decomposition. User can override.
+
+### Branching Strategy (分支策略)
+
+One task = one branch. No exceptions.
+
+```
+main
+ ├── feat/task-1   (developer-1)
+ ├── feat/task-2   (developer-2)
+ └── feat/task-3   (developer-3)
+```
+
+Rules:
+
+- Branch name: `feat/task-{id}` where `{id}` is the task number from tasks checklist
+- Developer checks out branch before starting, merges to main after tester verifies
+- If two tasks conflict (shared file), architect must reorder or split the task
+- Never commit directly to main during active development
+
+Task ID format (from `speckit tasks` output):
+
+```
+- [ ] #1 [P0] 用户注册接口      → feat/task-1
+- [ ] #2 [P0] 登录鉴权          → feat/task-2
+- [ ] #3 [P1] 任务列表页        → feat/task-3
+```
+
+All roles reference tasks by `#{id}` — developer reads `#1`, tester verifies `#1`, architect reassigns `#1`. ID is the single source of truth across the pipeline.
+
+### MVP Definition (MVP 定义)
+
+MVP = all P0 tasks completed + core user flow works end-to-end.
+
+MVP checkpoint triggers when:
+
+- All P0 tasks are marked complete and verified by tester
+- OR time reaches 70% of competition deadline (whichever comes first)
+
+At MVP checkpoint:
+
+1. **Freeze scope** — no new features, only bug fixes on P0 code
+2. **Demo readiness check** — can the core flow be demonstrated?
+3. **Decision point**:
+   - Core flow works → start demo preparation
+   - Core flow broken → all developers fix P0 bugs, drop everything else
+
+### Parallel Scheduling (并行调度)
+
+architect assigns tasks with dependency awareness:
+
+1. **Independent tasks** — assign to different developers simultaneously
+2. **Dependent tasks** — chain them: task-B starts only after task-A merges
+3. **Conflict avoidance** — no two developers touch the same file in the same phase
+
+Assignment output (architect produces after scaffold):
+
+```
+developer-1: task-1, task-4  (independent, parallel)
+developer-2: task-2           (independent, parallel)
+developer-3: task-3           (blocked by task-2, starts after merge)
+```
+
+If a developer finishes early, architect reassigns from the P1 queue.
+
+### Fallback & Recovery (异常回退)
+
+When something goes wrong:
+
+| Situation | Action |
+|-----------|--------|
+| Task exceeds time limit (2x estimate) | Mark as blocked, skip, move to next P0 task |
+| Developer branch has unresolvable conflict | Reassign task to different developer with fresh branch |
+| All P0 tasks blocked | User decides: simplify scope or extend deadline |
+| Test fails after merge | Revert merge, developer fixes on branch, re-submit |
+| 50% time elapsed, no P0 complete | Emergency scope cut: keep only 1 core feature, rebuild focus |
+
+Recovery principle: **never stop the pipeline**. If one task blocks, work around it. The goal is MVP, not perfection.
 
 ### Anti-Drift Guarantees
 
