@@ -43,7 +43,7 @@ forge/
 │   │   ├── skills/      # 内置 Skills
 │   │   └── mcp.json     # MCP 服务器配置
 │   └── project/
-│       └── tech-stack.md # 技术栈（比赛时填写）
+│       └── constitution.md # 项目宪法（技术栈+架构规则+质量标准）
 ├── download/            # 下载缓存与 manifest
 │   └── versions.lock    # 已安装版本记录
 └── ai/                  # 运行时（gitignore）
@@ -210,13 +210,13 @@ forge init skills
 
 | 角色 | 职责 | 工具 |
 |------|------|------|
-| **architect** | 需求拆解 → speckit plan → tasks（锚点文档） | `speckit plan`, `speckit tasks` |
+| **architect** | 需求拆解 → specify plan → tasks（锚点文档） | `specify plan`, `specify tasks` |
 | **scaffold** | 构建项目骨架（框架、共享代码） | framework CLIs, shared types |
 | **developer** | TDD 实现任务，一人一分支 feat/task-{id} | `superpowers:test-driven-development` |
 | **tester** | 每完成一个 task 立即验证 | `superpowers:verification-before-completion` |
 
 ```
-architect: 需求拆解 → speckit plan + tasks（带 #id + P0/P1/P2）
+architect: 需求拆解 → specify plan + tasks（带 #id + P0/P1/P2）
     ↓
 🔵 用户对照原始需求逐项确认 plan
     ↓ 确认通过
@@ -232,7 +232,7 @@ MVP Checkpoint: P0 完成 → 冻结范围 → 准备 demo
 防跑偏保障：
 - **用户先确认 plan** — AI 产出的 plan 必须经人对照原始需求验证，防止 AI 理解偏差
 - plan 文件是锚点，developer 只做 plan 里的任务
-- speckit tasks 输出带 ID 和优先级的 checklist，list 外的不做
+- specify tasks 输出带 ID 和优先级的 checklist，list 外的不做
 - 3 角色闭环，跑偏了 tester 立即发现
 - **优先级控制** — P0 必须完成，P1/P2 视时间决定
 - **异常回退** — 任务阻塞就绕过去，不停流水线
@@ -257,7 +257,7 @@ security + cross-tester + auto-test → 汇总
 
 ```bash
 # 1. 填写技术栈
-$EDITOR config/project/tech-stack.md
+$EDITOR config/project/constitution.md
 
 # 2. 填写部署逻辑
 $EDITOR shell/deploy.sh

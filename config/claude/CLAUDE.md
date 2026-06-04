@@ -10,33 +10,34 @@ Three modes exist:
 2. **Verification Mode** — post-competition security + cross-testing
 3. **Fast Track** — skip planning, fix directly
 
-## Competition Mode (比赛工作流)
+## Competition Mode
 
 ### Roles
 
 | Role | Responsibility | Key Tool |
 |------|---------------|----------|
-| **architect** | Requirements decomposition → Plan → Tasks (anchor document) | `speckit plan`, `speckit tasks` |
-| **scaffold** | Build project skeleton (frameworks, shared code) | framework CLIs, shared types |
+| **architect** | Requirements decomposition → Plan → Tasks (anchor document) | `specify plan`, `specify tasks` |
+| **scaffold** | Build project skeleton (see `scaffold.md`) | framework CLIs, docker templates |
 | **developer** | Implement tasks via TDD, one branch per task | `superpowers:test-driven-development` |
 | **tester** | Verify each task immediately | `superpowers:verification-before-completion` |
 
 ### Flow
 
 ```
-architect:  需求拆解 → 细化需求文档
-            speckit plan → plan file (anchor)
-            speckit tasks → tasks checklist (每项带 task-id + P0/P1/P2 优先级)
+architect:  specify constitution → project constitution (optional, for team standards)
+            specify plan → plan file (anchor)
+            specify clarify → AI asks clarification questions (≤5 questions)
+            specify tasks → tasks checklist (each with task-id + P0/P1/P2 priority)
                 ↓
-plan review: 🔵 用户对照原始需求逐项确认 plan 和 tasks
-            ├── 确认 → 进入 scaffold
-            └── 纠错 → architect 修正后重新确认
+plan review: 🔵 user reviews plan and tasks against original requirements
+            ├── confirmed → proceed to scaffold
+            └── issues found → architect revises, re-present
                 ↓
-scaffold:   后端框架初始化 + 前端框架初始化 + shared 代码
-            push to main（骨架可运行）
-            按依赖关系分配任务给 developer-1/2/3
+scaffold:   Build project skeleton (see scaffold.md)
+            push to main (skeleton should be runnable)
+            assign tasks to developer-1/2/3 by dependency
                 ↓
-parallel:   developer 并行开发（每人独立分支 feat/task-{id}）
+parallel:   developers work in parallel (each on own branch feat/task-{id})
             ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐
             │ developer-1          │ │ developer-2          │ │ developer-3          │
             │ feat/task-1          │ │ feat/task-2          │ │ feat/task-3          │
@@ -48,9 +49,9 @@ parallel:   developer 并行开发（每人独立分支 feat/task-{id}）
             └──────┬───────────────┘ └──────┬───────────────┘ └──────┬───────────────┘
                    └──────── merge to main ────────┘
                 ↓
-MVP checkpoint: 所有 P0 任务完成 → 核心链路可演示
-            ├── 是 → 进入 demo 收尾
-            └── 否 → 继续补 P0，P1/P2 视时间决定
+MVP checkpoint: all P0 tasks complete → core flow demonstrable
+            ├── yes → start demo preparation
+            └── no → continue P0, P1/P2 based on time
                 ↓
 tester:     verify each completed task:
               1. scope check (no drift)
@@ -61,7 +62,7 @@ tester:     verify each completed task:
             proceed to next task / rework if failed
 ```
 
-### Direct Development (直接开发)
+### Direct Development
 
 For existing projects with skeleton already in place.
 
@@ -75,7 +76,7 @@ Flow:
 1. Claude reads tasks.md, shows numbered task list
 2. User selects tasks by number (e.g. "4,5,6")
 3. Claude outputs detailed design for each task
-4. User confirms design (✅), adjusts (❌), or skips (跳过)
+4. User confirms design (✅), adjusts (❌), or skips
 5. Developers pull → checkout branch → implement
 6. Run functional tests — must pass before PR
 7. Submit PR
@@ -91,7 +92,7 @@ Use when:
 - Bug fixes or small feature additions
 - Continuing work from a previous session
 
-### Requirements Decomposition (需求拆解)
+### Requirements Decomposition
 
 When the input is a rough/brief competition prompt, architect must first decompose before planning.
 
@@ -100,7 +101,7 @@ Steps:
 1. **Extract core objectives** — identify the main goal, user scenarios, and functional boundaries from the prompt
 2. **Identify gaps** — list what the prompt doesn't specify but must be decided (data model, auth, scale, etc.)
 3. **Ask user to confirm** — present the decomposition as structured questions; user confirms or overrides
-4. **Output detailed requirements doc** — becomes the input for `speckit plan`
+4. **Output detailed requirements doc** — becomes the input for `specify plan`
 
 Decomposition template:
 
@@ -115,9 +116,9 @@ Skip decomposition when:
 - Requirements are already detailed and unambiguous
 - User says "直接开发" or "fast track"
 
-### Priority & Scope Control (优先级与砍需求)
+### Priority & Scope Control
 
-Every task in `speckit tasks` must carry a priority tag:
+Every task in `specify tasks` must carry a priority tag:
 
 | Priority | Meaning | Rule |
 |----------|---------|------|
@@ -134,7 +135,7 @@ When time is running out:
 
 architect decides priority during task decomposition. User can override.
 
-### Branching Strategy (分支策略)
+### Branching Strategy
 
 One task = one branch. No exceptions.
 
@@ -152,17 +153,17 @@ Rules:
 - If two tasks conflict (shared file), architect must reorder or split the task
 - Never commit directly to main during active development
 
-Task ID format (from `speckit tasks` output):
+Task ID format (from `specify tasks` output):
 
 ```
-- [ ] #1 [P0] 用户注册接口      → feat/task-1
-- [ ] #2 [P0] 登录鉴权          → feat/task-2
-- [ ] #3 [P1] 任务列表页        → feat/task-3
+- [ ] #1 [P0] user registration API     → feat/task-1
+- [ ] #2 [P0] login authentication      → feat/task-2
+- [ ] #3 [P1] task list page            → feat/task-3
 ```
 
 All roles reference tasks by `#{id}` — developer reads `#1`, tester verifies `#1`, architect reassigns `#1`. ID is the single source of truth across the pipeline.
 
-### MVP Definition (MVP 定义)
+### MVP Definition
 
 MVP = all P0 tasks completed + core user flow works end-to-end.
 
@@ -179,7 +180,7 @@ At MVP checkpoint:
    - Core flow works → start demo preparation
    - Core flow broken → all developers fix P0 bugs, drop everything else
 
-### Parallel Scheduling (并行调度)
+### Parallel Scheduling
 
 architect assigns tasks with dependency awareness:
 
@@ -197,7 +198,7 @@ developer-3: task-3           (blocked by task-2, starts after merge)
 
 If a developer finishes early, architect reassigns from the P1 queue.
 
-### Fallback & Recovery (异常回退)
+### Fallback & Recovery
 
 When something goes wrong:
 
@@ -215,7 +216,7 @@ Recovery principle: **never stop the pipeline**. If one task blocks, work around
 
 1. **Human validates plan first** — architect produces plan, user reviews against real requirements before any code is written
 2. **Plan is the anchor** — developer implements ONLY what the plan lists
-3. **Tasks checklist** — speckit tasks output atomic, verifiable items; nothing outside the list gets done
+3. **Tasks checklist** — `specify tasks` output atomic, verifiable items; nothing outside the list gets done
 4. **3-role loop** — architect plans, developer implements, tester verifies; drift is caught immediately
 
 ### Triggering
@@ -228,7 +229,7 @@ When active:
 - No scope expansion without explicit user approval
 - Each task verified before moving to the next
 
-## Verification Mode (赛后验证)
+## Verification Mode
 
 Post-competition verification for security and quality assurance.
 
@@ -245,13 +246,13 @@ Post-competition verification for security and quality assurance.
 After competition completes:
   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
   │   security   │   │ cross-tester │   │  auto-test   │
-  │  安全扫描     │   │  黑盒测试     │   │  全量测试     │
+  │  security scan│  │  black-box   │   │  full suite  │
   └──────────────┘   └──────────────┘   └──────────────┘
          │                  │                  │
-         └──────── 汇总 ────┴──────────────────┘
+         └──────── merge ───┴──────────────────┘
                     │
-                    ├─ 无问题 → 发布
-                    └─ 有问题 → 修复 → 重测
+                    ├─ no issues → release
+                    └─ issues found → fix → re-test
 ```
 
 ### Triggering

@@ -9,6 +9,7 @@ Your job is to verify each task immediately after developer completes it, using 
 ## Active Stages
 
 - verification (per-task)
+- analyze (final consistency check)
 
 ## Workflow
 
@@ -19,6 +20,10 @@ After developer marks a task complete:
   3. Check: does it match the plan's intent?
   4. Check: are there changes outside the task scope?
   5. Report: pass / fail + evidence
+
+After all tasks complete:
+  6. Run specify analyze for final consistency check
+  7. Verify: implementation matches spec, plan, and constitution
 ```
 
 ## Responsibilities
@@ -28,6 +33,7 @@ After developer marks a task complete:
 3. **Scope enforcement** — detect any changes outside the task list
 4. **Functional correctness** — does it actually do what the task says?
 5. **Test quality** — are the tests meaningful, not just green?
+6. **Final consistency** — run `specify analyze` to verify spec-plan-implementation alignment
 
 ## Verification Steps
 
@@ -37,7 +43,7 @@ For each completed task:
 
 - Read the task description and acceptance criteria
 - Diff the changes: are ALL changed files related to this task?
-- Flag any file改动 that doesn't belong to this task
+- Flag any file changes that don't belong to this task
 
 ### 2. Functional Check
 
@@ -57,6 +63,18 @@ For each completed task:
 - No obvious bugs or edge cases missed
 - Error handling is present where needed
 - No security issues introduced
+
+### 5. Final Analyze (After All Tasks)
+
+When all tasks are completed:
+
+1. Run `specify analyze` to perform consistency analysis
+2. Check alignment between:
+   - spec.md (requirements)
+   - plan.md (architecture)
+   - constitution.md (rules, if exists)
+   - actual implementation
+3. Report any discrepancies
 
 ## Rules
 
@@ -110,6 +128,23 @@ For each task:
 - Evidence: [specific details]
 ```
 
+Final analyze report:
+
+```
+## Final Analyze Report
+
+### Spec-Plan-Implementation Alignment
+- spec.md: [consistent / issues found]
+- plan.md: [consistent / issues found]
+- constitution.md: [consistent / N/A / issues found]
+
+### Discrepancies
+- [list any misalignments]
+
+### Verdict
+- [PASS / FAIL]
+```
+
 ## Output
 
 Return:
@@ -119,3 +154,4 @@ Return:
 3. scope drift findings (if any)
 4. remaining risks
 5. recommendation (proceed / rework / investigate)
+6. final analyze report (spec-plan-implementation alignment)

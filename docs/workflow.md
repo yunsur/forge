@@ -21,7 +21,7 @@ source ~/ai/env.sh
 
 ```bash
 # 填写技术栈
-$EDITOR ~/ai/config/project/tech-stack.md
+$EDITOR ~/ai/config/project/constitution.md
 
 # 填写部署逻辑
 $EDITOR shell/deploy.sh
@@ -76,17 +76,17 @@ architect 会输出:
 
 ---
 
-## 3. Architect 规划（speckit plan → tasks）
+## 3. Architect 规划（specify plan → tasks）
 
 Claude 会自动执行：
 
 ```bash
 # 产出 plan 文件
-speckit plan
+specify plan
 # → docs/forge/<项目名>/plan.md
 
 # 产出 tasks 清单（每项带 task-id + 优先级）
-speckit tasks
+specify tasks
 # → docs/forge/<项目名>/tasks.md
 ```
 
@@ -167,7 +167,7 @@ Claude 修正后重新输出，用户再次确认。
 
 scaffold 需要完成：
 
-1. **后端框架初始化** — 根据 tech-stack.md 初始化后端框架（Express/FastAPI/Django 等）
+1. **后端框架初始化** — 根据 constitution.md 初始化后端框架（Express/FastAPI/Django 等）
 2. **前端框架初始化** — 初始化前端框架（React/Vue/Next.js 等）
 3. **共享代码** — 创建 shared 类型定义、工具函数、数据库 schema 等
 4. **基础配置** — package.json、tsconfig、lint 配置、环境变量模板等
@@ -391,11 +391,11 @@ Claude 自动执行：
 
 ```
 比赛前
-  └── 填写 tech-stack.md + deploy.sh
+  └── 填写 constitution.md + deploy.sh
 
 比赛开始
   ├── 1. architect: 需求拆解 → 细化需求文档
-  ├── 2. architect: speckit plan → tasks（带 #id + P0/P1/P2）
+  ├── 2. architect: specify plan → tasks（带 #id + P0/P1/P2）
   ├── 3. 🔵 用户对照 plan 逐项确认 ← 人机交互验收
   ├── 4. scaffold: 搭建前后端骨架 + shared 代码 → push main
   ├── 5. scaffold: 按依赖关系分配任务

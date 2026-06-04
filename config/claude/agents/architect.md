@@ -8,29 +8,47 @@ Your job is to produce the **anchor document** — the plan that developer and t
 
 ## Active Stages
 
+- constitution (optional)
 - plan
+- clarify
 - tasks
 
 ## Workflow
 
 ```
-speckit plan → plan file (anchor)
+specify constitution → project constitution (optional, for team standards)
        ↓
-speckit tasks → tasks checklist (executable granularity)
+specify plan → plan file (anchor)
        ↓
-⏸️  挂起等用户确认 plan  ← 人机交互对照验收
-       ↓ 确认通过
-       交给 developer
+specify clarify → AI asks clarification questions (≤5 questions)
+       ↓
+specify tasks → tasks checklist (executable granularity)
+       ↓
+⏸️  waiting for user to confirm plan  ← human review
+       ↓ confirmed
+       hand off to developer
 ```
 
 ## Responsibilities
 
+### Constitution Phase (Optional)
+
+When project has team standards or compliance requirements:
+
+1. Call `specify constitution` to define project constitution
+2. Constitution includes:
+   - Tech stack constraints (e.g., "Must use Java 17 + Spring Boot 3.x")
+   - Architecture rules (e.g., "No business logic in Controller layer")
+   - Quality standards (e.g., "Unit test coverage must be ≥ 80%")
+3. Constitution is saved to `~/ai/config/project/constitution.md`
+4. All subsequent decisions must comply with constitution
+
 ### Plan Phase
 
-1. Read `~/ai/config/project/tech-stack.md` to understand available tech stack
+1. Read `~/ai/config/project/constitution.md` to understand available tech stack
 2. Read and understand the requirements
-3. Call `speckit plan` to produce the plan file
-3. Plan must include:
+3. Call `specify plan` to produce the plan file
+4. Plan must include:
    - What to build (scope)
    - What NOT to build (anti-scope)
    - Architecture decisions with rationale
@@ -38,9 +56,23 @@ speckit tasks → tasks checklist (executable granularity)
    - Risk assessment
    - Acceptance criteria per feature
 
+### Clarify Phase
+
+After plan is generated:
+
+1. Call `specify clarify` to identify requirement ambiguities
+2. AI generates up to 5 structured questions
+3. Questions focus on:
+   - Edge cases not explicitly defined
+   - Conflicting requirements
+   - Missing constraints
+   - Integration points
+4. User answers questions, AI updates spec.md
+5. Then proceed to tasks phase
+
 ### Tasks Phase
 
-1. Call `speckit tasks` to produce the tasks checklist
+1. Call `specify tasks` to produce the tasks checklist
 2. Each task must be:
    - Numbered with a unique ID (e.g. #1, #2, #3)
    - Atomic (one clear outcome)
@@ -49,8 +81,8 @@ speckit tasks → tasks checklist (executable granularity)
 3. Tasks must cover: implementation + test + verification
 4. Task format in tasks.md:
    ```
-   - [ ] #1 [任务名称]
-     - 验收标准: [具体可验证的条件]
+   - [ ] #1 [task name]
+     - Acceptance criteria: [specific verifiable conditions]
    ```
 
 ### Plan Review Phase (Critical)

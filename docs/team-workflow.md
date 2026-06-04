@@ -24,9 +24,9 @@
 │     └── 输出细化需求文档                                      │
 │                         ↓                                   │
 │  2. ARCHITECT 规划                                            │
-│     ├── 读 tech-stack.md（技术栈约束）                        │
-│     ├── speckit plan → plan.md（锚定文档）                    │
-│     └── speckit tasks → tasks.md（带 #id + P0/P1/P2 优先级）  │
+│     ├── 读 constitution.md（项目宪法）                          │
+│     ├── specify plan → plan.md（锚定文档）                    │
+│     └── specify tasks → tasks.md（带 #id + P0/P1/P2 优先级）  │
 │                         ↓                                   │
 │  3. 🔵 PLAN 人工确认（关键环节）                               │
 │     ├── 用户逐项对照原始需求                                  │
@@ -139,7 +139,7 @@ main
 - 两个 task 冲突（共享文件）→ architect 重排或拆分 task
 - 活跃开发期间禁止直接 commit main
 
-Task ID 格式（从 `speckit tasks` 输出）：
+Task ID 格式（从 `specify tasks` 输出）：
 
 ```
 - [ ] #1 [P0] 用户注册接口      → feat/task-1
@@ -350,7 +350,7 @@ mkdir <项目名> && cd <项目名>
 git init
 
 # 2. 创建基础结构
-# 根据 tech-stack.md 搭建目录、配置、基础代码
+# 根据 constitution.md 搭建目录、配置、基础代码
 
 # 3. 提交骨架
 git add -A
@@ -392,7 +392,7 @@ architect 会先做需求拆解：
   ✅ 正确 / ❌ 需调整 / ➕ 需补充
 ```
 
-**architect 会先读取 `~/ai/config/project/tech-stack.md`（运行时路径），确保方案基于已有技术栈。**
+**architect 会先读取 `~/ai/config/project/constitution.md`（运行时路径），确保方案符合项目宪法。**
 
 用户确认后，进入 plan 阶段。
 
@@ -427,7 +427,7 @@ architect 产出带编号、带优先级的 tasks.md 后，**等用户确认 pla
 
 scaffold 需要完成：
 
-1. **后端框架初始化** — 根据 tech-stack.md 初始化后端框架（Express/FastAPI/Django 等）
+1. **后端框架初始化** — 根据 constitution.md 初始化后端框架（Express/FastAPI/Django 等）
 2. **前端框架初始化** — 初始化前端框架（React/Vue/Next.js 等）
 3. **共享代码** — 创建 shared 类型定义、工具函数、数据库 schema 等
 4. **基础配置** — package.json、tsconfig、lint 配置、环境变量模板等
@@ -567,7 +567,7 @@ developer 实现完
 |------|------|------|
 | plan.md | `docs/forge/<项目名>/plan.md` | 架构决策、scope |
 | tasks.md | `docs/forge/<项目名>/tasks.md` | 任务清单、分配、进度、优先级 |
-| tech-stack.md | `~/ai/config/project/tech-stack.md` | 技术栈约定 |
+| constitution.md | `~/ai/config/project/constitution.md` | 项目宪法（技术栈+架构规则+质量标准） |
 | CLAUDE.md | `config/claude/CLAUDE.md` | 工作流规则 |
 
 ### 进度同步（tasks.md 实时更新）
@@ -654,7 +654,7 @@ git push origin feat/task-1
 
 ```
 第 1 个人（主控 Claude）
-  ├── architect: 需求拆解 → 读 tech-stack.md → speckit plan → tasks
+  ├── architect: 需求拆解 → 读 constitution.md → specify plan → tasks
   ├── 🔵 用户确认 plan
   ├── scaffold: 后端 + 前端骨架 → push main → 分配任务
   ├── 退出 Claude

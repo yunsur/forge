@@ -169,7 +169,7 @@ _init_config() {
         ok "claude 配置 → ~/.claude/ (软链接)"
     fi
 
-    # 部署项目配置（tech-stack.md）
+    # 部署项目配置（constitution.md）
     if [ -d "$ROOT_DIR/config/project" ]; then
         mkdir -p "$AI_HOME/config/project"
         cp -r "$ROOT_DIR/config/project/"* "$AI_HOME/config/project/" 2>/dev/null || true
