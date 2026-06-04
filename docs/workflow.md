@@ -17,14 +17,11 @@ source ~/ai/env.sh
 ./forge doctor
 ```
 
-比赛开始后填写两个文件：
+比赛开始后填写：
 
 ```bash
 # 填写技术栈
 $EDITOR ~/ai/config/project/constitution.md
-
-# 填写部署逻辑
-$EDITOR shell/deploy.sh
 
 # 重新部署配置
 forge init config
@@ -167,21 +164,22 @@ Claude 修正后重新输出，用户再次确认。
 
 scaffold 需要完成：
 
-1. **后端框架初始化** — 根据 constitution.md 初始化后端框架（Express/FastAPI/Django 等）
-2. **前端框架初始化** — 初始化前端框架（React/Vue/Next.js 等）
+1. **后端框架初始化** — 根据 constitution.md 初始化后端框架（FastAPI/Express 等）
+2. **前端框架初始化** — 使用 `web-react-cli` skill 初始化前端框架（React/Vue 等）
 3. **共享代码** — 创建 shared 类型定义、工具函数、数据库 schema 等
-4. **基础配置** — package.json、tsconfig、lint 配置、环境变量模板等
-5. **提交并推送** — push 到 main，确保骨架可运行
-6. **任务分配** — 按依赖关系分配任务给 developer-1/2/3
+4. **向用户确认** — 展示骨架结构 + 功能清单，等待用户确认
+5. **Docker 环境** — 复制 docker 模板，启动服务
+6. **Git 设置** — 初始化仓库，提交代码，push 到 main
+7. **任务分配** — 按依赖关系分配任务给 developer-1/2/3
 
 ```
 🏗️ Scaffold: 搭建项目骨架
-  ├── 后端: Express + TypeScript ✅
+  ├── 后端: FastAPI ✅
   ├── 前端: React + Vite ✅
-  ├── shared: 类型定义 + 工具函数 ✅
-  ├── 配置: tsconfig, eslint, env ✅
-  ├── 测试: 项目可启动 ✅
-  ├── git push origin main ✅
+  ├── Docker: docker-compose.yml ✅
+  ├── 功能: 登录接口 + 页面 ✅
+  ├── 向用户确认 ⏸️
+  ├── Push to main ✅
   └── 任务分配:
       ├── developer-1: #1, #4 (independent, parallel)
       ├── developer-2: #2 (independent, parallel)
@@ -376,14 +374,14 @@ Claude 会作为 cross-tester 黑盒测试：
 
 ```bash
 # 在 Claude Code 中
-> /deploy prod user@server:/app
+> /deploy
 ```
 
 Claude 自动执行：
 1. 检查是否有未提交的变更
 2. 运行测试
 3. 构建项目
-4. 执行 `deploy.sh` 中的部署逻辑
+4. 本地部署
 
 ---
 
@@ -391,23 +389,32 @@ Claude 自动执行：
 
 ```
 比赛前
-  └── 填写 constitution.md + deploy.sh
+  └── 填写 constitution.md
 
 比赛开始
   ├── 1. architect: 需求拆解 → 细化需求文档
   ├── 2. architect: specify plan → tasks（带 #id + P0/P1/P2）
   ├── 3. 🔵 用户对照 plan 逐项确认 ← 人机交互验收
-  ├── 4. scaffold: 搭建前后端骨架 + shared 代码 → push main
+  ├── 4. scaffold: 搭建骨架 → 向用户确认 → push main
   ├── 5. scaffold: 按依赖关系分配任务
-  ├── 6. developer: 并行 TDD 开发（独立分支 feat/task-{id}）
-  ├── 7. tester: 逐 task 即时验证
-  ├── 8. 循环 6-7 直到所有 task 完成
-  ├── 9. MVP Checkpoint: P0 完成 → 冻结范围
-  └── 10. /commit 提交
+  │
+  ├── ┌─ 前端 Track ─────────────────────────────────┐
+  │   ├── 6a. developer: TDD 开发前端页面/组件       │
+  │   ├── 7a. ui-tester: Playwright 验证渲染/交互    │
+  │   └── 循环 6a-7a 直到前端 task 完成              │
+  │                                                  │
+  ├── ┌─ 后端 Track ─────────────────────────────────┐
+  │   ├── 6b. developer: TDD 开发 API/业务逻辑       │
+  │   ├── 7b. tester: 逐 task 即时验证               │
+  │   └── 循环 6b-7b 直到后端 task 完成              │
+  │                                                  │
+  ├── 8. MVP Checkpoint: P0 完成 → 冻结范围
+  └── 9. /commit 提交
 
 赛后
-  ├── 11. /security-scan 安全扫描
-  ├── 12. 交叉测试
+  ├── 10. /security-scan 安全扫描（我方）
+  ├── 11. 交叉测试（我方）
+  ├── 12. 🔴 对手侦察（输入对手 URL → 漏洞扫描 + 功能对标）
   ├── 13. 修复问题
   └── 14. /deploy 部署
 ```

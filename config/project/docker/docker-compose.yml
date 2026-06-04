@@ -1,9 +1,5 @@
-# docker-compose.yml — 本地开发全栈环境
-# scaffold 生成后，所有人 docker compose up -d 启动
-# backend/frontend 用 network_mode: host 共享宿主机网络，直连内网镜像源
-
 services:
-  postgres:
+  db:
     image: postgres:15
     environment:
       POSTGRES_DB: app
@@ -13,38 +9,52 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:7
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-    network_mode: host
+    build: ./backend
+    ports:
+      - "8081:8081"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/app
-      REDIS_URL: redis://127.0.0.1:6379
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/app
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: app-dev-secret-key-2024
     depends_on:
-      - postgres
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8081 --reload
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    network_mode: host
+    build: ./frontend
+    ports:
+      - "8080:8080"
     environment:
-      VITE_API_URL: http://localhost:8000
+      DOCKER_ENV: "1"
     depends_on:
       - backend
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      - frontend_node_modules:/app/node_modules
+    command: pnpm run dev -- --host 0.0.0.0 --port 8080
 
 volumes:
   pgdata:
+  frontend_node_modules:

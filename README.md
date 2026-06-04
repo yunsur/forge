@@ -31,7 +31,7 @@ forge/
 ├── forge                # CLI 入口
 ├── shell/
 │   ├── env.sh           # 环境变量（source 加载）
-│   ├── deploy.sh        # 部署脚本（比赛时填写）
+│   ├── deploy.sh        # 本地开发部署脚本
 │   └── forge/*.sh       # 命令模块
 ├── registry/            # 工具清单（每个工具一个 .sh）
 ├── rules/common/        # 通用规则（编码、Git、测试、安全）
@@ -42,6 +42,8 @@ forge/
 │   │   ├── commands/    # Slash commands（/commit, /deploy 等）
 │   │   ├── skills/      # 内置 Skills
 │   │   └── mcp.json     # MCP 服务器配置
+│   ├── env/
+│   │   └── sources.md   # 软件源（内网 Nexus）
 │   └── project/
 │       └── constitution.md # 项目宪法（技术栈+架构规则+质量标准）
 ├── download/            # 下载缓存与 manifest
@@ -83,7 +85,7 @@ forge/
 | 命令 | 说明 |
 |------|------|
 | `/commit "feat(auth): add login"` | 一键提交（lint + test + commit） |
-| `/deploy prod user@server:/app` | 一键部署 |
+| `/deploy` | 一键本地部署 |
 | `/security-scan` | 一键安全扫描 |
 
 ## Rules
@@ -143,14 +145,14 @@ export HTTP_PROXY="http://127.0.0.1:7890"
 export HTTPS_PROXY="http://127.0.0.1:7890"
 ```
 
-已配置的国内镜像：
+## 软件源
 
-| 生态 | 镜像 |
-|------|------|
-| PyPI | mirrors.aliyun.com |
-| npm | registry.npmmirror.com |
-| Go | goproxy.cn |
-| Rust | rsproxy.cn |
+内网 Nexus 源，配置在 `config/env/sources.md`：
+
+- pip/uv: `http://172.21.3.9:8081/repository/PyPI_group/simple`
+- npm/pnpm: `http://172.21.3.9:8081/repository/npm_group`
+- go: `http://172.21.3.9:8081/repository/golang_group,direct`
+- cargo: `http://172.21.3.13:8081/repository/cargo_group/`
 
 ## 内网迁移
 
@@ -180,8 +182,8 @@ source ~/ai/env.sh
 
 ```bash
 forge download superpowers
-forge install               # 从 download/ 复制
-forge init skills           # 自动链接到 ~/.claude/skills/sp-*
+forge install
+forge init skills
 ```
 
 ### SpecKit（规划工具）
@@ -190,7 +192,7 @@ forge init skills           # 自动链接到 ~/.claude/skills/sp-*
 
 ```bash
 forge download speckit
-forge init tools    # 用 pyenv 的 python 安装
+forge init tools
 ```
 
 ### Security Review（安全审查）
@@ -199,7 +201,6 @@ forge init tools    # 用 pyenv 的 python 安装
 
 ```bash
 forge init skills
-# 自动链接到 ~/.claude/skills/security-review
 ```
 
 ## 比赛工作流
@@ -211,7 +212,7 @@ forge init skills
 | 角色 | 职责 | 工具 |
 |------|------|------|
 | **architect** | 需求拆解 → specify plan → tasks（锚点文档） | `specify plan`, `specify tasks` |
-| **scaffold** | 构建项目骨架（框架、共享代码） | framework CLIs, shared types |
+| **scaffold** | 构建项目骨架 | `web-react-cli`, framework CLIs |
 | **developer** | TDD 实现任务，一人一分支 feat/task-{id} | `superpowers:test-driven-development` |
 | **tester** | 每完成一个 task 立即验证 | `superpowers:verification-before-completion` |
 
@@ -220,7 +221,7 @@ architect: 需求拆解 → specify plan + tasks（带 #id + P0/P1/P2）
     ↓
 🔵 用户对照原始需求逐项确认 plan
     ↓ 确认通过
-scaffold: 搭建骨架 → push main → 按依赖分配任务
+scaffold: 搭建骨架 → 向用户确认 → push main → 分配任务
     ↓
 developer: 并行 TDD 开发（独立分支 feat/task-{id}）
     ↓
@@ -228,14 +229,6 @@ tester: 逐 task 即时验证
     ↓
 MVP Checkpoint: P0 完成 → 冻结范围 → 准备 demo
 ```
-
-防跑偏保障：
-- **用户先确认 plan** — AI 产出的 plan 必须经人对照原始需求验证，防止 AI 理解偏差
-- plan 文件是锚点，developer 只做 plan 里的任务
-- specify tasks 输出带 ID 和优先级的 checklist，list 外的不做
-- 3 角色闭环，跑偏了 tester 立即发现
-- **优先级控制** — P0 必须完成，P1/P2 视时间决定
-- **异常回退** — 任务阻塞就绕过去，不停流水线
 
 ### 阶段二：赛后（验证）
 
@@ -259,10 +252,7 @@ security + cross-tester + auto-test → 汇总
 # 1. 填写技术栈
 $EDITOR config/project/constitution.md
 
-# 2. 填写部署逻辑
-$EDITOR shell/deploy.sh
-
-# 3. 重新部署配置
+# 2. 重新部署配置
 forge init config
 ```
 
@@ -276,12 +266,6 @@ forge skills install anthropics/skills/frontend-design
 
 # 整个仓库
 forge skills install obra/superpowers
-```
-
-内置技能通过 `forge init skills` 部署：
-
-```bash
-forge init skills
 ```
 
 ## MCP 配置

@@ -306,6 +306,10 @@ Default superpowers skills:
 
 If a listed skill is not available, skip it silently and proceed without it. Do not block work because a skill is missing. Apply the skill's intent manually if possible (e.g., if test-driven-development is unavailable, still follow TDD discipline yourself).
 
+## Environment Configuration
+
+All package sources: `~ai/config/env/sources.md`
+
 ## Engineering Rules
 
 Before changing code:
