@@ -12,6 +12,7 @@
 #   forge list              显示所有工具状态
 #   forge pack [config|full] 打包用于迁移（config=仅配置，full=全量默认）
 #   forge push <target>     打包并 scp 到远程服务器
+#   forge npm <args>        封装 npm（安装后自动链接全局二进制）
 #   forge update            仅检查可用更新
 # ─────────────────────────────────────────────────────────
 set -euo pipefail
@@ -38,6 +39,7 @@ case "${1:-}" in
     pack)           shift; cmd_pack "$@" ;;
     merge)          shift; cmd_merge "$@" ;;
     push)           shift; cmd_push "$@" ;;
+    npm)            shift; cmd_npm "$@" ;;
     skills)         shift; cmd_skills "$@" ;;
     mcp)            shift; cmd_mcp "$@" ;;
     doctor)         cmd_doctor ;;

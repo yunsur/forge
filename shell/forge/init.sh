@@ -389,6 +389,40 @@ _init_bins() {
     fi
 }
 
+# ── npm packages ──────────────────────────────────────────
+
+_init_npm_packages() {
+    local npm_bin="$AI_HOME/tools/node/bin/npm"
+    if [ ! -f "$npm_bin" ]; then
+        warn "node 未安装，跳过 npm 包安装"
+        return 0
+    fi
+
+    _log "init" "安装全局 npm 包"
+
+    local packages=(pnpm openspec)
+    local installed=0 failed=0
+
+    for pkg in "${packages[@]}"; do
+        if "$npm_bin" ls -g "$pkg" &>/dev/null; then
+            ok "$pkg (已安装)"
+            continue
+        fi
+        if "$npm_bin" install -g "$pkg" &>/dev/null; then
+            ok "$pkg"
+            ((installed++)) || true
+        else
+            err "$pkg 安装失败"
+            ((failed++)) || true
+        fi
+    done
+
+    [ $installed -gt 0 ] && ok "npm 包: ${installed} 成功  ${failed} 失败"
+
+    # 链接全局二进制
+    _link_npm_globals
+}
+
 # ── 主入口 ──────────────────────────────────────────────────
 
 cmd_init() {
@@ -414,6 +448,7 @@ cmd_init() {
             _init_skills
             _init_mcp
             _init_bins
+            _init_npm_packages
 
             echo ""
             echo -e "${G}${BOLD}初始化完成！${NC}"

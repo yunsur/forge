@@ -20,6 +20,7 @@ forge - AI 工具版本管理器
   forge init skills                        仅部署 Skills
   forge init mcp                           仅合并 MCP 配置
   forge init bins                          仅链接二进制
+  forge npm <args>                         封装 npm（安装后自动链接全局二进制）
   forge uninstall                          卸载指定工具
 
   forge new <name>                         生成新工具的 manifest 模板
